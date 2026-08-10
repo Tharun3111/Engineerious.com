@@ -1,55 +1,52 @@
 import Link from "next/link";
 
+import { Logo } from "@/components/Logo";
 import { SocialLinks } from "@/components/SocialLinks";
 import { env } from "@/lib/env";
 
 export function Footer() {
   return (
-    <footer className="mt-20 border-t border-rule">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.5fr_1fr_1fr] lg:px-8">
+    <footer className="mt-24 bg-[#111827] text-white">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.5fr_1fr_1fr] lg:px-8">
         <div>
-          <Link href="/" className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-[13px] font-bold text-accent-fg">
-              E
-            </span>
-            <span className="text-[15px] font-bold tracking-tight">Engineerious</span>
+          <Link href="/" aria-label="Engineerious home" className="inline-block">
+            <Logo className="h-auto w-[200px]" />
           </Link>
-          <p className="mt-3 max-w-xs text-[13.5px] text-muted">
-            Practical AI engineering, learned in public by Tharun Chowdary.
+          <p className="mt-4 max-w-sm text-[15px] leading-6 text-white/65">
+            Practical notes for engineers and technical founders building AI systems
+            that need to work beyond the demo.
           </p>
-          <SocialLinks className="mt-4" />
         </div>
 
         <div>
-          <p className="section-label">Engineerious</p>
-          <ul className="mt-3 space-y-2 text-[13.5px] text-muted">
-            <li><Link href="/about" className="hover:text-fg">About Tharun</Link></li>
-            <li><Link href="/subscribe" className="hover:text-fg">Newsletter</Link></li>
+          <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/45">
+            Explore
+          </p>
+          <ul className="mt-3 space-y-1 text-[15px] text-white/70">
+            <li><Link href="/#what-you-get" className="inline-flex min-h-11 items-center hover:text-white">What you’ll get</Link></li>
+            <li><Link href="/about" className="inline-flex min-h-11 items-center hover:text-white">About Tharun</Link></li>
+            <li><Link href="/subscribe" className="inline-flex min-h-11 items-center hover:text-white">Newsletter</Link></li>
           </ul>
         </div>
 
         <div>
-          <p className="section-label">Connect</p>
-          <ul className="mt-3 space-y-2 text-[13.5px] text-muted">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/45">
+            Connect
+          </p>
+          <div className="mt-3">
             {env.contactEmail && (
-              <li>
-                <a href={`mailto:${env.contactEmail}`} className="hover:text-fg">
-                  {env.contactEmail}
-                </a>
-              </li>
+              <a href={`mailto:${env.contactEmail}`} className="inline-flex min-h-11 items-center text-[15px] text-white/70 hover:text-white">
+                Email Tharun
+              </a>
             )}
-            {env.linkedinUrl && (
-              <li><a href={env.linkedinUrl} target="_blank" rel="noopener noreferrer" className="hover:text-fg">LinkedIn ↗</a></li>
-            )}
-          </ul>
+            <SocialLinks className="mt-2 text-white" />
+          </div>
         </div>
       </div>
 
-      <div className="border-t border-rule">
-        <div className="mx-auto flex max-w-6xl flex-col gap-1.5 px-4 py-5 sm:px-6 lg:px-8">
-          <p className="font-mono text-[11.5px] text-muted">
-            © {new Date().getFullYear()} Engineerious · Built around evidence, useful work, and clear disclosure.
-          </p>
+      <div className="border-t border-white/15">
+        <div className="mx-auto max-w-7xl px-4 py-5 text-[13px] text-white/45 sm:px-6 lg:px-8">
+          © {new Date().getFullYear()} Engineerious. Sources, limits, and corrections stay visible.
         </div>
       </div>
     </footer>
