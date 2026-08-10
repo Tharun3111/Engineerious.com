@@ -1,27 +1,31 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { IBM_Plex_Sans, Newsreader } from "next/font/google";
 
 import { Footer } from "@/components/Footer";
 import { Nav } from "@/components/Nav";
 import { env } from "@/lib/env";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
-const mono = JetBrains_Mono({
+const sans = IBM_Plex_Sans({
   subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-jetbrains-mono",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-ibm-plex-sans",
+  display: "swap",
+});
+const display = Newsreader({
+  subsets: ["latin"],
+  variable: "--font-newsreader",
   display: "swap",
 });
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
   title: {
-    default: "Engineerious — practical AI engineering by Tharun Chowdary",
+    default: "Engineerious — practical AI engineering for real systems",
     template: "%s · Engineerious",
   },
   description:
-    "Tharun Chowdary's public notebook on practical AI engineering: evaluation, agents, MCP, retrieval, models, and reliable systems.",
+    "Practical notes for engineers and technical founders building reliable AI systems: models, agents, evaluation, retrieval, and production lessons.",
   alternates: {
     canonical: "/",
     types: { "application/rss+xml": "/rss.xml" },
@@ -36,7 +40,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${mono.variable}`}>
+    <html lang="en" className={`${sans.variable} ${display.variable}`}>
       <body>
         <a
           href="#main"
@@ -45,7 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         <Nav />
-        <main id="main" className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <main id="main" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {children}
         </main>
         <Footer />

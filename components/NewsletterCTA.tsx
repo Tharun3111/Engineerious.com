@@ -49,52 +49,44 @@ export function NewsletterCTA({
   return (
     <section
       data-testid="newsletter-cta"
-      className={
-        compact
-          ? "card p-5"
-          : "card relative overflow-hidden p-7 sm:p-9"
-      }
+      className={compact ? "border-t border-rule pt-7" : "border-y border-rule py-10 sm:py-12"}
     >
-      {!compact && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-accent-tint blur-2xl"
-        />
-      )}
-      <div className="relative">
+      <div>
         <p className="eyebrow">Newsletter</p>
-        <h2 className={compact ? "mt-1 text-[16px] font-semibold" : "mt-1.5 text-[21px] font-bold tracking-tight"}>
+        <h2 className={compact ? "font-display mt-2 text-[27px] font-semibold leading-tight" : "font-display mt-2 text-[36px] font-semibold leading-tight"}>
           {heading}
         </h2>
-        <p className={compact ? "mt-1 text-[13.5px] text-muted" : "mt-1.5 max-w-md text-[14.5px] text-muted"}>
+        <p className={compact ? "mt-2 max-w-xl text-[16px] leading-6 text-muted" : "mt-3 max-w-2xl text-[17px] leading-7 text-muted"}>
           {blurb}
         </p>
 
-        <form onSubmit={onSubmit} className="mt-4 flex flex-wrap gap-2">
-          <label htmlFor="newsletter-email" className="sr-only">
+        <form onSubmit={onSubmit} className="mt-6 max-w-2xl">
+          <label htmlFor="newsletter-email" className="block text-[14px] font-semibold text-fg">
             Email address
           </label>
-          <input
-            id="newsletter-email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@company.com"
-            className="min-w-0 flex-1 rounded-full border border-rule-strong bg-surface px-4 py-2 text-[14px] outline-none placeholder:text-muted focus:border-accent"
-          />
-          <button type="submit" disabled={status === "submitting"} className="btn btn-primary disabled:opacity-60">
-            {status === "submitting" ? "Subscribing…" : "Subscribe"}
-          </button>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+            <input
+              id="newsletter-email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@company.com"
+              className="field min-w-0 flex-1"
+            />
+            <button type="submit" disabled={status === "submitting"} className="btn btn-primary disabled:cursor-not-allowed disabled:opacity-60">
+              {status === "submitting" ? "Subscribing…" : "Get the next note"}
+            </button>
+          </div>
         </form>
 
         {message && (
           <p
             role="status"
             data-subscribe-status={status}
-            className={`mt-2.5 text-[13px] ${status === "error" ? "text-accent-strong" : "text-muted"}`}
+            className={`mt-3 text-[14px] ${status === "error" ? "font-medium text-[#9b2c1f]" : "text-muted"}`}
           >
             {message}
           </p>
