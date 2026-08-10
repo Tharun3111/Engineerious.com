@@ -1,103 +1,160 @@
-import Image from "next/image";
+import Link from "next/link";
 
-export default function Home() {
+import { NewsletterCTA } from "@/components/NewsletterCTA";
+import { PillarBadge } from "@/components/PillarBadge";
+import { SocialLinks } from "@/components/SocialLinks";
+import { getPublishedPosts } from "@/lib/content/blog";
+import { env } from "@/lib/env";
+import { isoDate } from "@/lib/time";
+
+export const revalidate = 300;
+
+const FOCUS_AREAS = [
+  {
+    label: "Evaluation",
+    title: "Measure behavior, not demo quality",
+    detail: "Evals, regression gates, observability, and the evidence behind a release decision.",
+  },
+  {
+    label: "Agents & MCP",
+    title: "Treat tool use as a production system",
+    detail: "Interfaces, failure modes, permissions, and the operational work hidden by a clean demo.",
+  },
+  {
+    label: "Retrieval",
+    title: "Debug the whole information path",
+    detail: "Index freshness, embeddings, ranking, and the practical causes of RAG quality drift.",
+  },
+] as const;
+
+export default function HomePage() {
+  const posts = getPublishedPosts().slice(0, 3);
+  const contactHref = env.contactEmail
+    ? `mailto:${env.contactEmail}`
+    : env.linkedinUrl ?? "/about#contact";
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
+    <div className="space-y-20 py-10 sm:py-16">
+      <section className="relative overflow-hidden rounded-3xl border border-rule bg-surface px-6 py-14 sm:px-12 sm:py-20">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-20 -top-28 h-80 w-80 rounded-full bg-accent-tint blur-3xl"
         />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+        <div className="relative grid items-end gap-10 lg:grid-cols-[1fr_18rem]">
+          <div className="max-w-3xl">
+            <p className="eyebrow">Tharun Chowdary · AI engineering</p>
+            <h1 className="mt-4 text-[38px] font-bold leading-[1.06] tracking-[-0.035em] sm:text-[56px]">
+              I learn AI systems by building, testing, and explaining them.
+            </h1>
+            <p className="mt-6 max-w-2xl text-[17px] leading-relaxed text-muted sm:text-[18px]">
+              Engineerious is my public notebook for practical AI engineering: clear
+              thinking about models, evaluation, agents, retrieval, and what changes
+              how I build.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/subscribe" className="btn btn-primary">
+                Follow the work
+              </Link>
+              <a href={contactHref} className="btn btn-secondary">
+                Work with me
+              </a>
+            </div>
+          </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
+          <aside className="border-l-2 border-accent pl-5">
+            <p className="section-label">Current publishing standard</p>
+            <p className="mt-2 text-[14.5px] leading-relaxed text-muted">
+              First-person claims are published only after I verify them. AI-assisted
+              text stays disclosed. Useful evidence beats content volume.
+            </p>
+            <SocialLinks className="mt-4" />
+          </aside>
+        </div>
+      </section>
+
+      <section aria-labelledby="focus-heading">
+        <div className="max-w-2xl">
+          <p className="section-label">What I am working through</p>
+          <h2 id="focus-heading" className="mt-2 text-[28px] font-bold tracking-tight">
+            Practical questions behind reliable AI products
+          </h2>
+        </div>
+        <ul className="mt-6 grid gap-4 md:grid-cols-3">
+          {FOCUS_AREAS.map((area, index) => (
+            <li key={area.label} className="card p-6">
+              <p className="font-mono text-[11px] text-accent-strong">0{index + 1}</p>
+              <p className="mt-5 section-label">{area.label}</p>
+              <h3 className="mt-2 text-[18px] font-semibold leading-snug">{area.title}</h3>
+              <p className="mt-3 text-[14px] leading-relaxed text-muted">{area.detail}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-labelledby="writing-heading">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="max-w-2xl">
+            <p className="section-label">Verified writing</p>
+            <h2 id="writing-heading" className="mt-2 text-[28px] font-bold tracking-tight">
+              Notes I can stand behind
+            </h2>
+          </div>
+          {posts.length > 0 && (
+            <Link href="/blog" className="btn btn-secondary btn-sm">
+              Read all writing →
+            </Link>
+          )}
+        </div>
+
+        {posts.length === 0 ? (
+          <div className="mt-6 grid gap-5 rounded-2xl border border-rule bg-surface p-6 sm:grid-cols-[1fr_auto] sm:items-center sm:p-8">
+            <div>
+              <p className="font-semibold">The first field notes are under review.</p>
+              <p className="mt-2 max-w-2xl text-[14.5px] leading-relaxed text-muted">
+                I am auditing sources, tested claims, and first-person details before
+                publishing. Subscribe if you want the verified pieces when they are ready.
+              </p>
+            </div>
+            <Link href="/subscribe" className="btn btn-secondary">
+              Get the first note
+            </Link>
+          </div>
+        ) : (
+          <ul className="mt-6 grid gap-4 sm:grid-cols-3">
+            {posts.map((post) => (
+              <li key={post.slug} className="card card-hover flex flex-col p-5">
+                <PillarBadge slug={post.pillar} />
+                <h3 className="mt-3 text-[17px] font-semibold leading-snug">
+                  <Link href={`/blog/${post.slug}`} className="hover:text-accent-strong">
+                    {post.title}
+                  </Link>
+                </h3>
+                <p className="mt-2 flex-1 text-[13.5px] leading-relaxed text-muted">{post.dek}</p>
+                <p className="mt-4 font-mono text-[11.5px] text-muted">
+                  {isoDate(post.date)} · {post.readingMinutes} min
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section id="contact" className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
+        <div className="card p-7 sm:p-9">
+          <p className="eyebrow">Build, collaborate, discuss</p>
+          <h2 className="mt-2 text-[25px] font-bold tracking-tight">
+            Working on a difficult AI engineering problem?
+          </h2>
+          <p className="mt-3 max-w-xl text-[14.5px] leading-relaxed text-muted">
+            I am open to thoughtful conversations about AI engineering roles,
+            collaborations, technical writing, and practical systems work.
+          </p>
+          <a href={contactHref} className="btn btn-secondary mt-6">
+            Start a conversation
           </a>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        <NewsletterCTA variant="compact" />
+      </section>
     </div>
   );
 }

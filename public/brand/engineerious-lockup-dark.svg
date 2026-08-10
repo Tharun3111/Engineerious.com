@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64" role="img" aria-labelledby="title desc">
+  <title id="title">Engineerious for dark backgrounds</title>
+  <desc id="desc">Engineerious wordmark with a modular E symbol and an orange center bar.</desc>
+  <path fill="#F3F3F1" d="M6 12a6 6 0 0 1 6-6h34v12H18v28h28v12H12a6 6 0 0 1-6-6V12Z"/>
+  <rect width="50" height="12" x="6" y="26" fill="#FF7A2E" rx="6"/>
+  <text x="75" y="42" fill="#F3F3F1" font-family="Inter, Arial, sans-serif" font-size="29" font-weight="700" letter-spacing="-1">Engineerious</text>
+</svg>

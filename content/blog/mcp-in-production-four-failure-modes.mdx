@@ -1,0 +1,122 @@
+---
+title: "Four ways an MCP server fails in production that never show up in the demo"
+dek: "Model Context Protocol makes tool integration a protocol instead of a per-vendor SDK. Operating one is a different job: lifecycle, timeouts, schema drift, and blast radius."
+pillar: mcp
+date: 2026-07-28
+tags: [mcp, tools, agents, reliability]
+draft: true
+format: article
+origin: ai_generated
+sourceStatus: mixed
+testedStatus: not_tested
+authenticityStatus: pending
+---
+
+The Model Context Protocol demo is genuinely good. You write a server, expose a few tools, point a
+client at it, and the model calls your code. Fifteen minutes, works first time.
+
+Then you put it on the path of real traffic and discover that the demo never tested the four things
+that actually break.
+
+## 1. The tool that hangs takes the whole turn with it
+
+The demo tool returns in 40ms. A real tool queries a database that occasionally locks, or calls a
+third-party API that occasionally decides to take 90 seconds.
+
+The model is blocked for the entire duration. The user is watching a spinner. And if your client has
+no per-tool-call timeout — many do not, by default — the turn does not fail, it just never
+finishes.
+
+What I run now:
+
+- **A hard per-call timeout on the server side**, well below the client's overall turn budget.
+  Server-side, because a client-side timeout leaves your handler running and your connection pool
+  draining.
+- **A timeout response that is a useful tool result, not an exception.** `{"error":
+  "lookup_timeout", "retryable": true}` gives the model something to reason about. A transport-level
+  failure gives it nothing, and models handle that badly — usually by silently pretending the call
+  succeeded.
+- **A circuit breaker per tool.** If the inventory lookup has failed nine times in a row, the tenth
+  call should fail in 1ms with `service_unavailable`, not queue behind the same dead dependency.
+
+The general principle: **a tool call is a network call inside a latency budget you do not
+control.** Treat it with the same paranoia as any other RPC in a request path.
+
+## 2. Schema drift silently changes model behaviour
+
+You rename a parameter from `customer_id` to `customerId`. Every test passes — your server accepts
+both, you were careful. Quality drops 10% the next day.
+
+What happened is that the tool schema is *prompt*. It is serialised into the model's context, and
+the model's decision about *when* to call the tool, and with what, is conditioned on the exact
+wording of the name and description. Changing a description is not a refactor. It is a prompt
+change, and it deserves the same treatment: an eval run before it ships.
+
+Concretely:
+
+- **Version tool schemas** and diff them in CI. A changed description should require a reviewer,
+  the same way a changed prompt does.
+- **Keep descriptions in the "when to use this" register**, not the "what this does" register. The
+  model does not need your implementation notes; it needs a decision rule. `"Look up a customer's
+  current subscription tier. Use only when the user asks about billing or plan limits."` beats a
+  paragraph about your service.
+- **Run the eval suite on schema changes.** If your evals do not exercise tool selection, they do
+  not cover the part of the system that just changed.
+
+## 3. Lifecycle: who starts the server, and what happens when it dies
+
+The demo runs a stdio server as a subprocess of the client. That model does not survive contact
+with a deployment.
+
+Decisions you have to make explicitly:
+
+- **stdio vs HTTP.** stdio is beautifully simple and couples the server's lifetime to a single
+  client process. Fine for a local developer tool. For a multi-tenant service, you want a
+  long-lived HTTP server you can deploy, scale, and roll back independently — and then you own auth,
+  which stdio gave you for free by virtue of being a child process.
+- **Restart semantics.** If the server dies mid-conversation, does the client reconnect? Does it
+  re-list tools? If tool availability silently changes between turns, the model's earlier plan is
+  now invalid and nothing tells it so.
+- **Startup as a health gate.** A server that comes up and lists tools before its database
+  connection is ready will advertise capabilities it cannot deliver. List tools *after* dependencies
+  are healthy, not before.
+
+## 4. One server, one blast radius
+
+The tempting design is one MCP server exposing everything: customer lookup, order mutation, refund
+issuance, internal search. It is one deploy, one config entry, one auth setup.
+
+It is also one failure domain, and — more importantly — one permission domain.
+
+The read-only search tool and the issue-a-refund tool have wildly different risk profiles. If they
+live behind the same server with the same credential, then every agent that needs search has, in
+practice, been handed the ability to move money. The protocol will not stop it. The model's
+judgment is the only control, and the model's judgment is not a security boundary.
+
+What works better:
+
+- **Split by risk tier, not by domain.** Read-only servers and mutating servers, separately scoped
+  and separately credentialled.
+- **Put irreversible actions behind an explicit confirmation step** that the application owns —
+  not a prompt instruction telling the model to ask first.
+- **Log every tool call with its arguments and its caller.** When something goes wrong you will
+  need to reconstruct what the model actually did, and the conversation transcript alone will not
+  tell you.
+
+## What MCP genuinely fixed
+
+None of this is an argument against the protocol. Before MCP, every one of these problems existed
+*and* you re-solved integration from scratch for each vendor. Now the integration is standard and
+the operational problems are the operational problems — which are at least the kind of problem the
+industry already knows how to solve.
+
+Just do not confuse "the protocol is simple" with "the system is simple". The protocol is the easy
+part. The four things above are the job.
+
+## Open question
+
+The one I do not have a settled answer on: **how many tools is too many?** Model tool-selection
+accuracy degrades as the tool list grows, but where the knee is depends on the model, the overlap
+between descriptions, and the task. I currently keep any single server under roughly a dozen tools
+and split beyond that, but that number is a heuristic from my own workloads, not a measured
+threshold. If you have measured it properly on yours, I would like to see the numbers.

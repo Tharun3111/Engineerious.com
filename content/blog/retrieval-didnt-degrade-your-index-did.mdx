@@ -1,0 +1,128 @@
+---
+title: "Your retrieval didn't degrade. Your index did."
+dek: "RAG quality regressions are usually operational, not algorithmic. A field guide to the four index-level causes, and how to tell them apart before you touch the chunker."
+pillar: rag-mlops
+date: 2026-08-04
+tags: [rag, retrieval, mlops, embeddings, monitoring]
+draft: true
+format: article
+origin: ai_generated
+sourceStatus: mixed
+testedStatus: not_tested
+authenticityStatus: pending
+---
+
+The report comes in as "the assistant got worse this week". The instinct is to reach for the
+retrieval algorithm: change the chunk size, add a reranker, try hybrid search, swap the embedding
+model.
+
+In my experience that instinct is wrong most of the time. The algorithm did not change. The
+**index** did — and index problems have completely different fixes from retrieval problems.
+
+Here are the four causes I check first, in order of how often they turn out to be the answer.
+
+## 1. Freshness: the index is describing a world that no longer exists
+
+The most common cause, and the least interesting, which is why it gets missed.
+
+Documents changed. The pipeline that re-embeds them is running on a schedule that was set when the
+corpus was a tenth the size, and it is now silently falling behind — or it failed four days ago and
+nobody is alerted on it, because it fails by doing nothing.
+
+**How to tell:** compute the age distribution of your index, not the mean. `max(indexed_at)` looks
+fine while the p99 rots. Compare the count of source documents to the count of indexed chunks'
+distinct document ids. A drift between those two numbers is the whole diagnosis.
+
+**Instrument it permanently:**
+
+```sql
+select
+  count(distinct document_id)                                  as indexed_docs,
+  min(indexed_at)                                              as oldest,
+  percentile_cont(0.99) within group (order by indexed_at)     as p99_indexed_at
+from chunks;
+```
+
+Alert on `oldest` crossing your freshness SLO. Not on the job's exit code — jobs that hang do not
+exit.
+
+## 2. Partial reindex: half the corpus is in a different embedding space
+
+You upgraded the embedding model. The backfill ran. It ran out of memory 70% through, retried, and
+somebody marked the incident resolved because the service was up.
+
+Now 30% of your vectors are from the old model. They are the same dimensionality, so nothing
+errors. They are simply in a different geometry, and their similarity scores are meaningless
+relative to the new ones. Queries that should hit those documents return neighbours that are
+nonsense, and queries that should not hit them sometimes do.
+
+**How to tell:** store the embedding model id and version *on every chunk row*. Then this is a
+one-line query rather than a two-day investigation:
+
+```sql
+select embedding_model, count(*) from chunks group by 1;
+```
+
+If you cannot run that query today, that is the actual finding. Add the column before you do
+anything else.
+
+**The rule:** a reindex is a migration. It is all-or-nothing, it happens into a new index that you
+swap atomically, and the old index stays until the new one has been verified. Reindexing in place
+is how you get a corpus in two geometries.
+
+## 3. Distribution shift in what gets ingested
+
+Someone connected a new source. It is 400,000 short support-ticket comments, and the corpus was
+previously 12,000 documentation pages.
+
+Nothing is broken. Retrieval is doing exactly what it is supposed to. But the nearest neighbours
+for almost every query are now short, low-information ticket fragments that are lexically close and
+semantically useless, and the documentation the assistant used to cite is buried at rank 40.
+
+**How to tell:** track the distribution of *retrieved* chunks by source, over time, as a stacked
+area chart. A quality regression that coincides with a sharp change in that mix is this problem, not
+an algorithm problem.
+
+**Fixes are ingestion-side, not retrieval-side:** filter the new source, aggregate the short
+documents into meaningful units before embedding, or partition the index and retrieve from each
+partition with a quota. Tuning the chunker will not save you from a corpus that changed shape.
+
+## 4. Metadata filters silently matching nothing
+
+You added a tenant filter, a date filter, a language filter. It works. Then a code path starts
+passing `tenant_id` as a string where the index stores an integer, or a date filter with an
+off-by-one timezone boundary, and the filter now matches zero documents.
+
+Most vector stores return an empty result set for this, cheerfully, with a 200. Then the generation
+step gets an empty context and — this is the part that hurts — **the model answers anyway**, from
+parametric memory, fluently, with no indication anything is missing.
+
+**How to tell:** log retrieval result counts, and alert on the rate of empty and near-empty
+retrievals. This should be near zero. If it is not near zero, you have this bug somewhere, today.
+
+**And make it fail loudly:** if retrieval returns fewer than k chunks above your score floor, that
+is a distinct application state. Say "I don't have information on that" rather than letting the
+model improvise. An honest miss is recoverable; a confident hallucination sourced from an empty
+context is the failure people screenshot.
+
+## The diagnostic order
+
+When quality drops, in this order, before touching the algorithm:
+
+1. Is the index fresh? (age distribution, not mean)
+2. Is it homogeneous? (one embedding model, everywhere)
+3. Has the corpus mix changed? (retrieved-source distribution over time)
+4. Are filters matching? (empty-retrieval rate)
+
+Four queries. Ten minutes. They resolve the majority of "retrieval got worse" reports in my
+systems, and none of them require you to change a single line of retrieval logic.
+
+## The uncomfortable implication
+
+If your RAG system has no way to answer those four questions, then it is not really an ML system
+you operate — it is an ML system you hope about. The instrumentation above is unglamorous and it is
+the difference between a ten-minute diagnosis and a week of chunk-size experiments that were never
+going to work.
+
+Retrieval is an infrastructure problem wearing an ML hat. Most of the time, the hat is not the
+problem.

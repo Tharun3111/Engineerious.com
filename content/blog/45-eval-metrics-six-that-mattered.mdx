@@ -1,0 +1,114 @@
+---
+title: "I reverse-engineered 45 eval metrics. Six of them predicted anything."
+dek: "Most LLM evaluation suites measure things that never move when quality moves. Here is how I found the six metrics that did, and the discipline that got me there."
+pillar: eval-first
+date: 2026-07-14
+tags: [evals, llm-as-judge, regression-testing, observability]
+draft: true
+format: article
+origin: ai_generated
+sourceStatus: mixed
+testedStatus: not_tested
+authenticityStatus: pending
+---
+
+The first eval suite I built for a production RAG assistant had 45 metrics in it. Faithfulness,
+answer relevance, context precision, context recall, toxicity, latency percentiles, refusal rate,
+citation coverage, a half-dozen LLM-as-judge rubrics, and a long tail of things I added because a
+paper or a vendor dashboard suggested them.
+
+It ran on every PR. It produced a beautiful table. And when we shipped a change that made the
+assistant noticeably worse, the table barely moved.
+
+That is the failure mode this post is about. Not "we had no evals" — we had too many, and no idea
+which ones carried signal.
+
+## The test: does the metric move when quality moves?
+
+The question a metric has to answer is narrow. **When a human says this build is worse, does the
+number go down?** Everything else is decoration.
+
+So I built the cheapest possible version of that experiment:
+
+1. Take 60 real production conversations, sampled across the traffic distribution — not the happy
+   path, not only the escalations.
+2. Generate answers from two builds: the current production model/prompt/retriever, and a build I
+   had deliberately degraded in a specific way (a worse chunker, a smaller model, a truncated
+   system prompt, a broken reranker).
+3. Have a human — me, then a colleague, blind — label which answer is better, or tie.
+4. Run all 45 metrics against both sides.
+5. Ask, per metric: how often does it agree with the human ordering?
+
+A metric that agrees 50% of the time on a binary comparison is a coin flip. It is not a weak
+signal, it is *no* signal, and its presence in the report is actively harmful because it dilutes
+the ones that work.
+
+## What survived
+
+Six metrics cleared the bar with enough margin that I trusted them to gate a deploy:
+
+- **Retrieval recall@k against a labelled set.** Not judged, measured. If the passage containing
+  the answer is not in the context, nothing downstream can save the generation. This one caught
+  more real regressions than every generation-side metric combined.
+- **Citation-support rate.** For each factual claim in the answer, is there a retrieved chunk that
+  actually supports it? Judged, but with a tight rubric and a per-claim decomposition rather than a
+  whole-answer score.
+- **Refusal rate on answerable questions.** A model that gets more cautious looks safe in
+  aggregate and is a disaster in practice. This moved sharply on every model swap.
+- **Exact-match on the structured slice.** About a fifth of our traffic had a verifiable answer —
+  an ID, a date, a status. No judge required, no ambiguity.
+- **p95 end-to-end latency.** Quality that arrives after the user gave up is not quality.
+- **Cost per resolved conversation.** Not per call. Per *resolved conversation*, which counts the
+  retries a worse build provokes.
+
+Note what those have in common: four of them are counts of a verifiable thing. Only one is a pure
+LLM-as-judge rubric, and it only survived after I decomposed it from "rate this answer 1–5" into
+"for each claim, supported or not".
+
+## What died, and why
+
+The casualties are more instructive than the survivors.
+
+**Most 1–5 judge rubrics.** Ask a model to rate helpfulness on a five-point scale and you get a
+distribution with almost all its mass on 4. Degrade the system meaningfully and you get a
+distribution with almost all its mass on 4. The scale has no resolution where you need it. Binary
+or per-claim judgments held up; Likert scales did not.
+
+**Every metric that scored an answer without reference to the retrieved context.** They measure
+whether the model writes fluently, which it always does now.
+
+**Aggregate toxicity and safety scores on a non-adversarial set.** Zero variance across every
+build I tested. That does not mean safety does not matter — it means this measurement was not
+doing the work. Adversarial sets are a different eval with a different cadence.
+
+**Anything averaged over the full traffic mix.** The mean hid everything. The regression I most
+wanted to catch lived in 8% of queries, and an 8% subpopulation moving from good to terrible
+changes a mean by a rounding error. Slicing before averaging was the single highest-leverage change
+I made to the whole suite.
+
+## The discipline, generalised
+
+You do not need my six metrics. You need the procedure that produced them:
+
+1. **Write down what a regression looks like** in your product, in a sentence, before you pick any
+   metric.
+2. **Manufacture that regression on purpose.** A deliberately broken build is the only ground truth
+   you can generate on demand.
+3. **Keep only metrics that separate the broken build from the good one**, on your data, at your
+   sample size.
+4. **Slice before you average.** Per intent, per document source, per conversation length —
+   whichever dimension your product actually varies along.
+5. **Re-run the selection quarterly.** Metric relevance decays as the system changes. The suite
+   that catches your chunker bug will not catch your agent-loop bug.
+
+## The part that is still unsolved
+
+Sample size. Sixty conversations is enough to tell a coin flip from a signal; it is not enough to
+resolve a 2% quality change, and most of the changes I ship now are 2% changes. Getting statistical
+power without hand-labelling thousands of examples is the open problem in my own setup, and I do
+not have a clean answer yet. Pairwise judging with a strong model and a human-audited subsample is
+where I have landed — provisionally.
+
+If you take one thing: an eval suite is not a dashboard, it is a **classifier for regressions**, and
+you should evaluate it exactly as you would evaluate any other classifier. Most suites, mine
+included, would not have passed their own test.
