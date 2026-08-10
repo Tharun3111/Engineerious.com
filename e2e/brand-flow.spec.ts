@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("visitor-first public shell explains the value and keeps research private", async ({ page }) => {
+test("visitor-first public shell explains the value and exposes its core sections", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("img", { name: "Engineerious" }).first()).toBeVisible();
   await expect(
@@ -12,7 +12,9 @@ test("visitor-first public shell explains the value and keeps research private",
   await expect(page.getByText("For engineers and technical founders", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Get the next field note" }).first()).toBeVisible();
   await expect(page.getByText("The first verified notes are under review.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "News", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "News", exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Models", exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Blog", exact: true }).first()).toBeVisible();
 
   await page.goto("/about");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
@@ -20,8 +22,23 @@ test("visitor-first public shell explains the value and keeps research private",
   );
 });
 
-test("deferred research surfaces return 404", async ({ request }) => {
-  for (const path of ["/news", "/models", "/open-source", "/resources", "/submit"]) {
+test("news, models, and blog are distinct public endpoints", async ({ page }) => {
+  const endpoints = [
+    ["/news", "AI news, filtered for builders."],
+    ["/models", "Model releases, translated into engineering impact."],
+    ["/blog", "Deep dives from building and testing AI systems."],
+  ] as const;
+
+  for (const [path, heading] of endpoints) {
+    const response = await page.goto(path);
+    expect(response?.status(), path).toBe(200);
+    await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
+    await expect(page.locator('[data-feed-state="error"]')).toHaveCount(0);
+  }
+});
+
+test("remaining deferred research surfaces return 404", async ({ request }) => {
+  for (const path of ["/open-source", "/resources", "/submit"]) {
     const response = await request.get(path);
     expect(response.status(), path).toBe(404);
     expect(response.headers()["x-robots-tag"], path).toContain("noindex");

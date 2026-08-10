@@ -4,8 +4,9 @@ import { isDeferredPublicPath, shouldCloseResearchPath } from "@/lib/public-laun
 
 describe("public launch gate", () => {
   it("recognizes exact and nested deferred paths", () => {
-    expect(isDeferredPublicPath("/news")).toBe(true);
-    expect(isDeferredPublicPath("/models/123")).toBe(true);
+    expect(isDeferredPublicPath("/news")).toBe(false);
+    expect(isDeferredPublicPath("/models/123")).toBe(false);
+    expect(isDeferredPublicPath("/open-source/123")).toBe(true);
     expect(isDeferredPublicPath("/about")).toBe(false);
   });
 

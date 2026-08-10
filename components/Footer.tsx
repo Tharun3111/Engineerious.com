@@ -23,7 +23,9 @@ export function Footer() {
             Explore
           </p>
           <ul className="mt-3 space-y-1 text-[15px] text-white/70">
-            <li><Link href="/#what-you-get" className="inline-flex min-h-11 items-center hover:text-white">What you’ll get</Link></li>
+            <li><Link href="/news" className="inline-flex min-h-11 items-center hover:text-white">AI News</Link></li>
+            <li><Link href="/models" className="inline-flex min-h-11 items-center hover:text-white">Models</Link></li>
+            <li><Link href="/blog" className="inline-flex min-h-11 items-center hover:text-white">Blog</Link></li>
             <li><Link href="/about" className="inline-flex min-h-11 items-center hover:text-white">About Tharun</Link></li>
             <li><Link href="/subscribe" className="inline-flex min-h-11 items-center hover:text-white">Newsletter</Link></li>
           </ul>

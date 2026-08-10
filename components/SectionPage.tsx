@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FeedList } from "@/components/FeedList";
 import { NewsletterCTA } from "@/components/NewsletterCTA";
 import { SectionTabs } from "@/components/SectionTabs";
+import { isDbConfigured } from "@/lib/env";
 import { getFeed, type FeedSort } from "@/lib/queries";
 import type { Section } from "@/lib/sections";
 
@@ -21,26 +22,40 @@ export async function SectionPage({
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
   const offset = (page - 1) * PAGE_SIZE;
 
-  const { items, error } = await getFeed({
-    type: section.type,
-    sort,
-    limit: PAGE_SIZE,
-    offset,
-  });
+  const { items, error } = isDbConfigured()
+    ? await getFeed({
+        type: section.type,
+        sort,
+        limit: PAGE_SIZE,
+        offset,
+      })
+    : { items: [], error: null };
 
   const query = (nextPage: number) =>
     `${section.path}?sort=${sort}${nextPage > 1 ? `&page=${nextPage}` : ""}`;
 
   return (
-    <div className="space-y-6 py-8">
-      <header className="max-w-2xl space-y-1.5">
-        <p className="eyebrow">{section.label}</p>
-        <h1 className="text-[26px] font-bold tracking-tight">{section.blurb}</h1>
+    <div className="space-y-8 py-12 sm:py-16">
+      <header className="grid gap-5 border-b border-fg pb-8 lg:grid-cols-[18rem_1fr] lg:gap-10">
+        <p className="eyebrow">{section.eyebrow}</p>
+        <div className="max-w-3xl">
+          <h1 className="font-display text-balance text-[42px] font-semibold leading-[1.03] tracking-[-0.035em] sm:text-[56px]">
+            {section.blurb}
+          </h1>
+          <p className="mt-5 max-w-2xl text-[17px] leading-7 text-muted sm:text-[18px]">
+            {section.description}
+          </p>
+        </div>
       </header>
 
       <SectionTabs active={section.path} sort={sort} />
 
-      <FeedList items={items} error={error} startRank={offset + 1} />
+      <FeedList
+        items={items}
+        error={error}
+        startRank={offset + 1}
+        emptyMessage={section.emptyMessage}
+      />
 
       {!error && (page > 1 || items.length === PAGE_SIZE) && (
         <nav aria-label="Pagination" className="flex justify-between gap-4">

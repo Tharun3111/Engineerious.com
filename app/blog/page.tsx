@@ -3,7 +3,8 @@ import Link from "next/link";
 
 import { NewsletterCTA } from "@/components/NewsletterCTA";
 import { PillarBadge } from "@/components/PillarBadge";
-import { getAllPosts } from "@/lib/content/blog";
+import { SectionTabs } from "@/components/SectionTabs";
+import { getPublishedPosts } from "@/lib/content/blog";
 import { PILLARS } from "@/lib/pillars";
 import { isoDate } from "@/lib/time";
 
@@ -19,20 +20,23 @@ export const metadata: Metadata = {
  * time. Everything else is a row.
  */
 export default function BlogIndexPage() {
-  const posts = getAllPosts();
+  const posts = getPublishedPosts();
 
   return (
-    <div className="space-y-8 py-8">
-      <header className="max-w-2xl space-y-2">
-        <p className="eyebrow">Blog</p>
-        <h1 className="text-[26px] font-bold tracking-tight leading-tight">
-          Systems thinking, not demos
-        </h1>
-        <p className="text-[15px] text-muted">
-          Three pillars, written from things that actually ran in production —
-          including the parts that did not work.
-        </p>
+    <div className="space-y-8 py-12 sm:py-16">
+      <header className="grid gap-5 border-b border-fg pb-8 lg:grid-cols-[18rem_1fr] lg:gap-10">
+        <p className="eyebrow">Field notes / 03</p>
+        <div className="max-w-3xl">
+          <h1 className="font-display text-balance text-[42px] font-semibold leading-[1.03] tracking-[-0.035em] sm:text-[56px]">
+            Deep dives from building and testing AI systems.
+          </h1>
+          <p className="mt-5 max-w-2xl text-[17px] leading-7 text-muted sm:text-[18px]">
+            Original essays on evaluation, agents, retrieval, and production failures—written when there is enough evidence to teach something useful.
+          </p>
+        </div>
       </header>
+
+      <SectionTabs active="/blog" />
 
       <nav aria-label="Pillars" className="flex flex-wrap gap-2">
         {PILLARS.map((pillar) => (
@@ -41,9 +45,12 @@ export default function BlogIndexPage() {
       </nav>
 
       {posts.length === 0 ? (
-        <p data-feed-state="empty" className="card p-5 text-[14px] text-muted">
-          No posts published yet.
-        </p>
+        <div data-feed-state="empty" className="grid gap-3 border-y border-rule py-8 sm:grid-cols-[10rem_1fr]">
+          <p className="section-label">Editorial status</p>
+          <p className="max-w-2xl text-[16px] leading-7 text-muted">
+            The first original field notes are under review. Drafts stay private until their claims, sources, and authorship are verified.
+          </p>
+        </div>
       ) : (
         <ul data-feed-state="ok" data-feed-count={posts.length} className="grid gap-4 sm:grid-cols-2">
           {posts.map((post) => (

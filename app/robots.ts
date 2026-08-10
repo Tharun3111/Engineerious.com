@@ -13,8 +13,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           "/admin",
           "/api/",
-          "/news",
-          "/models",
           "/open-source",
           "/resources",
           "/submit",

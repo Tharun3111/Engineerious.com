@@ -1,6 +1,4 @@
 export const DEFERRED_PUBLIC_PREFIXES = [
-  "/news",
-  "/models",
   "/open-source",
   "/resources",
   "/submit",

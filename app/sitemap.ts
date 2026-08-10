@@ -14,6 +14,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     { url: `${site}/`, lastModified: now, changeFrequency: "weekly", priority: 1 },
+    { url: `${site}/news`, lastModified: now, changeFrequency: "daily" as const, priority: 0.9 },
+    { url: `${site}/models`, lastModified: now, changeFrequency: "daily" as const, priority: 0.9 },
+    { url: `${site}/blog`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.9 },
     ...getPublishedPosts().map((post) => ({
         url: `${site}/blog/${post.slug}`,
         lastModified: post.date,

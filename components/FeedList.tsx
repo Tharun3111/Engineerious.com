@@ -23,17 +23,18 @@ export function FeedList({
 }: FeedListProps) {
   if (error) {
     return (
-      <div data-feed-state="error" role="alert" className="card p-5 text-[13.5px]">
-        <p className="font-medium">Feed unavailable.</p>
-        <p className="mt-1 font-mono text-[12.5px] text-muted">{error}</p>
+      <div data-feed-state="error" role="alert" className="border-y border-rule py-8">
+        <p className="font-semibold">This section is temporarily unavailable.</p>
+        <p className="mt-1 text-[15px] text-muted">Please try again shortly.</p>
       </div>
     );
   }
 
   if (items.length === 0) {
     return (
-      <div data-feed-state="empty" className="card p-5 text-[13.5px] text-muted">
-        {emptyMessage}
+      <div data-feed-state="empty" className="grid gap-3 border-y border-rule py-8 sm:grid-cols-[10rem_1fr]">
+        <p className="section-label">Editorial status</p>
+        <p className="max-w-2xl text-[16px] leading-7 text-muted">{emptyMessage}</p>
       </div>
     );
   }

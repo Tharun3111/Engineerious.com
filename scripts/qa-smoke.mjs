@@ -16,8 +16,9 @@ const baseUrl = (process.env.BASE_URL ?? "http://localhost:3000").replace(/\/$/,
 /** `feed: true` asserts the page rendered populated rows, not an empty/error state. */
 const ROUTES = [
   { path: "/", newsletter: true },
-  { path: "/news", expect: 404 },
-  { path: "/models", expect: 404 },
+  { path: "/news", feed: true, contains: "AI news, filtered for builders." },
+  { path: "/models", feed: true, contains: "Model releases, translated into engineering impact." },
+  { path: "/blog", feed: true, contains: "Deep dives from building and testing AI systems." },
   { path: "/open-source", expect: 404 },
   { path: "/resources", expect: 404 },
   { path: "/pillars/eval-first", expect: 404 },
