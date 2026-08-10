@@ -12,33 +12,34 @@ export const metadata: Metadata = {
 
 export default function SubscribePage() {
   return (
-    <div className="max-w-2xl space-y-8 py-8">
-      <header className="space-y-2">
+    <div className="max-w-4xl py-14 sm:py-20">
+      <header className="max-w-3xl border-b border-rule pb-10">
         <p className="eyebrow">Newsletter</p>
-        <h1 className="text-[28px] font-bold tracking-tight leading-tight">
-          The Engineerious newsletter
+        <h1 className="font-display mt-3 text-balance text-[46px] font-semibold leading-[1.02] tracking-[-0.04em] sm:text-[62px]">
+          Practical AI engineering, when there is something worth sharing.
         </h1>
-        <p className="text-[15px] text-muted">
+        <p className="mt-6 max-w-2xl text-[19px] leading-8 text-muted">
           Notes on evaluation, agents, retrieval, models, and reliable AI systems —
           sent when I have verified work worth sharing.
         </p>
       </header>
 
-      <NewsletterCTA
-        heading="Subscribe"
+      <div className="py-12">
+        <NewsletterCTA
+        heading="Get the next field note"
         blurb="No fixed-volume promise, no automated link dump, and no invented certainty. Unsubscribe in one click."
       />
+      </div>
 
-      <section className="card space-y-2.5 p-5 text-[14px] text-muted">
-        <p>
-          <strong className="text-fg">What you get:</strong> verified field notes,
-          practical explanations, and the evidence or limitations behind each useful
-          conclusion.
-        </p>
-        <p>
-          <strong className="text-fg">What you do not get:</strong> daily sends, engagement
-          bait, or your email address in anyone else&rsquo;s list.
-        </p>
+      <section className="divide-y divide-rule border-y border-rule text-[16px] text-muted">
+        <div className="grid gap-2 py-6 sm:grid-cols-[10rem_1fr]">
+          <h2 className="font-semibold text-fg">What you get</h2>
+          <p>Verified field notes, practical explanations, and the evidence or limitations behind each useful conclusion.</p>
+        </div>
+        <div className="grid gap-2 py-6 sm:grid-cols-[10rem_1fr]">
+          <h2 className="font-semibold text-fg">What you don’t get</h2>
+          <p>Daily sends, engagement bait, automated link dumps, or your email address in anyone else&rsquo;s list.</p>
+        </div>
       </section>
 
       {/*
@@ -46,7 +47,7 @@ export default function SubscribePage() {
         error and this iframe is the working path — so /subscribe is never a dead end.
       */}
       {env.beehiivEmbedUrl && (
-        <section className="border-t border-rule pt-5">
+        <section className="mt-10 border-t border-rule pt-6">
           <h2 className="section-label mb-2">Or subscribe via beehiiv</h2>
           <iframe
             src={env.beehiivEmbedUrl}

@@ -13,20 +13,22 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <div className="space-y-10 py-10 sm:py-14">
-      <header className="max-w-3xl space-y-4">
+    <div className="py-14 sm:py-20">
+      <header className="grid gap-6 border-b border-rule pb-12 lg:grid-cols-[18rem_1fr] lg:pb-16">
         <p className="eyebrow">About Tharun</p>
-        <h1 className="text-[34px] font-bold leading-tight tracking-[-0.025em] sm:text-[44px]">
-          Learning how AI systems behave outside the demo.
-        </h1>
-        <p className="max-w-2xl text-[17px] leading-relaxed text-muted">
+        <div>
+          <h1 className="font-display max-w-3xl text-balance text-[46px] font-semibold leading-[1.02] tracking-[-0.04em] sm:text-[62px]">
+            Learning how AI systems behave outside the demo.
+          </h1>
+          <p className="mt-6 max-w-2xl text-[19px] leading-8 text-muted">
           I&rsquo;m Tharun Chowdary. Engineerious is where I turn practical AI
           engineering work into explanations, field notes, and reusable lessons.
-        </p>
+          </p>
+        </div>
       </header>
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,42rem)_1fr]">
-        <section className="prose">
+      <div className="grid gap-14 py-14 lg:grid-cols-[minmax(0,42rem)_1fr] lg:py-20">
+        <section className="prose order-2 lg:order-1">
           <h2>What this site is for</h2>
           <p>
             AI engineering changes quickly, but reliable systems still depend on clear
@@ -56,11 +58,10 @@ export default function AboutPage() {
           </p>
         </section>
 
-        <aside id="contact" className="space-y-5">
-          <div className="card p-6">
+        <aside id="contact" className="order-1 border-y border-rule py-7 lg:order-2 lg:border-b-0 lg:border-l lg:border-t-0 lg:py-0 lg:pl-8">
             <p className="section-label">Work with me</p>
-            <h2 className="mt-2 text-[20px] font-semibold">Open to useful conversations</h2>
-            <p className="mt-3 text-[14px] leading-relaxed text-muted">
+            <h2 className="font-display mt-3 text-[28px] font-semibold leading-tight">Open to useful conversations</h2>
+            <p className="mt-4 text-[16px] leading-7 text-muted">
               AI engineering roles, collaborations, technical writing, and practical
               systems work are all good reasons to reach out.
             </p>
@@ -82,17 +83,16 @@ export default function AboutPage() {
               )}
             </div>
             {!env.contactEmail && !env.linkedinUrl && (
-              <p className="mt-4 text-[13px] text-muted">
+              <p className="mt-4 text-[15px] leading-6 text-muted">
                 Direct contact details will appear here once the production profiles
                 are connected.
               </p>
             )}
             <SocialLinks className="mt-4" />
-          </div>
         </aside>
       </div>
 
-      <NewsletterCTA />
+      <NewsletterCTA heading="Get the next field note" />
     </div>
   );
 }
