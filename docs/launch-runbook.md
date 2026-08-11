@@ -2,7 +2,9 @@
 
 ## Public release boundary
 
-The launch release exposes only the home page, About, Subscribe, and verified original posts. News, model, open-source, resource, submission, and pillar routes remain unavailable unless `PUBLIC_RESEARCH_ENABLED=true` is explicitly configured.
+The launch release exposes the home page, News, Models, Blog, About, Subscribe, and
+verified original posts. Open-source, resource, submission, and pillar routes remain
+unavailable unless `PUBLIC_RESEARCH_ENABLED=true` is explicitly configured.
 
 Do not enable that flag until the research pipeline has passed editorial, attribution, retention, and operational review.
 
@@ -30,4 +32,6 @@ BASE_URL=https://example.vercel.app npm run qa:smoke
 BASE_URL=https://example.vercel.app npm run test:e2e
 ```
 
-Confirm deferred routes return 404 and carry `X-Robots-Tag: noindex, nofollow` before promoting the release.
+Confirm `/open-source`, `/resources`, `/submit`, and pillar routes return 404 and carry
+`X-Robots-Tag: noindex, nofollow` before promoting the release. Confirm `/news`,
+`/models`, and `/blog` return 200 without a feed error state.

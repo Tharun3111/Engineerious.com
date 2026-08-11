@@ -68,6 +68,26 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         <p className="font-mono text-[12px] text-muted">
           {longDate(post.date)} · {post.readingMinutes} min read · Tharun Chowdary Malepati
         </p>
+        <div className="max-w-[68ch] border-y border-rule py-3 text-[13.5px] leading-6 text-muted">
+          <p>
+            <span className="font-semibold text-fg">Provenance:</span>{" "}
+            {post.origin === "human"
+              ? "Human-written."
+              : post.origin === "ai_assisted"
+                ? "Written with disclosed AI assistance."
+                : "AI-generated first draft."}{" "}
+            {post.testedStatus === "not_tested"
+              ? "The claims were not independently tested by Engineerious."
+              : post.testedStatus === "tested_once"
+                ? "The described test was run once."
+                : "The described test was independently repeated."}
+          </p>
+          {post.reviewedBy && post.reviewedAt && (
+            <p>
+              Reviewed by {post.reviewedBy} on {longDate(post.reviewedAt)}.
+            </p>
+          )}
+        </div>
       </header>
 
       <div className="prose">
