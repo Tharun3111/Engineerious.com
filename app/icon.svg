@@ -1,5 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" fill="#FAFAF8" rx="14"/>
-  <path fill="#0B0D10" d="M10 17a5 5 0 0 1 5-5h31v10H20v20h26v10H15a5 5 0 0 1-5-5V17Z"/>
-  <rect width="44" height="10" x="10" y="27" fill="#E6570E" rx="5"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-label="Engineerious Proof Loop icon">
+  <title>Engineerious Proof Loop icon</title>
+  <path
+    d="M557 175A330 330 0 1 0 825 443"
+    fill="none"
+    stroke="#0A5FA5"
+    stroke-width="110"
+  />
+  <path fill="#22C55E" d="M670 202h126v126H670z" />
 </svg>
