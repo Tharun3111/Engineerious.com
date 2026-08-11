@@ -32,9 +32,9 @@
   --color-checkpoint: var(--checkpoint);
   --color-ring: var(--ring);
 
-  --font-sans: var(--font-ibm-plex-sans), sans-serif;
-  --font-display: var(--font-newsreader), Georgia, serif;
-  --font-mono: var(--font-ibm-plex-sans), sans-serif;
+  --font-sans: "IBM Plex Sans Variable", sans-serif;
+  --font-display: "Newsreader Variable", Georgia, serif;
+  --font-mono: "IBM Plex Sans Variable", sans-serif;
 }
 
 html {

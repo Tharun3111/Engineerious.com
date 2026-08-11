@@ -1,22 +1,12 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, Newsreader } from "next/font/google";
+
+import "@fontsource-variable/ibm-plex-sans/wght.css";
+import "@fontsource-variable/newsreader/wght.css";
 
 import { Footer } from "@/components/Footer";
 import { Nav } from "@/components/Nav";
 import { env } from "@/lib/env";
 import "./globals.css";
-
-const sans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-ibm-plex-sans",
-  display: "swap",
-});
-const display = Newsreader({
-  subsets: ["latin"],
-  variable: "--font-newsreader",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
@@ -40,7 +30,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${display.variable}`}>
+    <html lang="en">
       <body>
         <a
           href="#main"
