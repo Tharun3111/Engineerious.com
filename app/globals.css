@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
-/* Engineerious: an independent engineering publication on warm paper. */
+/* Engineerious: an independent AI engineering evidence desk. */
 :root {
-  --bg: #f3efe6;
-  --surface: #faf7f0;
-  --surface-2: #e9e2d6;
-  --fg: #151513;
-  --muted: #5d5a53;
-  --rule: #c9c1b3;
-  --rule-strong: #8f897f;
-  --accent: #111827;
+  --bg: #f4f9fc;
+  --surface: #ffffff;
+  --surface-2: #e8f1f6;
+  --fg: #0d1b24;
+  --muted: #566b78;
+  --rule: #cbdce6;
+  --rule-strong: #8eabbc;
+  --accent: #0d1b24;
   --accent-strong: #0a5fa5;
-  --accent-tint: #dce9f2;
+  --accent-tint: #dceef8;
   --accent-fg: #ffffff;
   --checkpoint: #22c55e;
   --ring: #0a5fa5;
@@ -34,7 +34,7 @@
 
   --font-sans: "IBM Plex Sans Variable", sans-serif;
   --font-display: "Newsreader Variable", Georgia, serif;
-  --font-mono: "IBM Plex Sans Variable", sans-serif;
+  --font-mono: "SFMono-Regular", "Cascadia Code", "Roboto Mono", monospace;
 }
 
 html {
@@ -209,6 +209,100 @@ a {
 
 .font-display {
   font-family: var(--font-display);
+}
+
+/* Homepage: a lab-instrument composition built around the Proof Loop mark. */
+.home-hero-grid {
+  background-color: var(--surface);
+  background-image:
+    linear-gradient(to right, rgb(10 95 165 / 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(10 95 165 / 0.045) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.proof-loop-panel {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.16);
+  background: #0d1b24;
+  color: white;
+  box-shadow: 0 24px 70px rgb(13 27 36 / 0.18);
+}
+
+.proof-loop-track {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.12);
+  stroke-width: 28;
+}
+
+.proof-loop-active {
+  fill: none;
+  stroke: #1681c4;
+  stroke-width: 34;
+  stroke-linecap: butt;
+  stroke-dasharray: 1040;
+  stroke-dashoffset: 1040;
+  animation: proof-loop-draw 1.1s cubic-bezier(0.2, 0.75, 0.25, 1) 120ms forwards;
+}
+
+.proof-loop-stage {
+  fill: #22c55e;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.proof-loop-kicker {
+  fill: rgb(255 255 255 / 0.42);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.proof-loop-word {
+  fill: #fff;
+  font-family: var(--font-sans);
+  font-size: 27px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.status-pulse {
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  box-shadow: 0 0 0 4px rgb(34 197 94 / 0.13);
+}
+
+.desk-lane {
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.desk-lane:hover {
+  z-index: 1;
+  background: #edf6fa;
+  box-shadow: 0 18px 45px rgb(13 27 36 / 0.09);
+  transform: translateY(-4px);
+}
+
+.desk-lane-arrow {
+  transition: transform 180ms ease;
+}
+
+.desk-lane:hover .desk-lane-arrow {
+  transform: translateX(5px);
+}
+
+@keyframes proof-loop-draw {
+  to {
+    stroke-dashoffset: 170;
+  }
 }
 
 /* Long-form article body — /blog/[slug] and /about opt into this. */

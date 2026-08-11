@@ -6,27 +6,36 @@ import { isoDate } from "@/lib/time";
 
 export const revalidate = 300;
 
-const REASONS_TO_VISIT = [
+const DESK_LANES = [
   {
-    number: "01",
-    label: "Build",
-    title: "Implementation notes you can use",
+    code: "SIGNAL / 01",
+    title: "AI News",
+    prompt: "Track what changed",
     detail:
-      "Practical patterns for evals, agents, retrieval, and the operational work hidden by a clean demo.",
+      "Source-checked releases, research, incidents, and policy shifts with the engineering impact attached.",
+    href: "/news",
+    action: "Open the news desk",
+    accent: "bg-[#0A5FA5]",
   },
   {
-    number: "02",
-    label: "Understand",
-    title: "Clear breakdowns of what changed",
+    code: "MODEL / 02",
+    title: "Model Watch",
+    prompt: "Compare before switching",
     detail:
-      "New models and approaches explained through their engineering impact, not launch-day excitement.",
+      "Model updates translated into capability, access, constraints, and the tests worth running before adoption.",
+    href: "/models",
+    action: "Inspect model updates",
+    accent: "bg-[#22C55E]",
   },
   {
-    number: "03",
-    label: "Decide",
-    title: "Evidence before adoption",
+    code: "FIELD / 03",
+    title: "Field Notes",
+    prompt: "Learn from the system",
     detail:
-      "Sources, tests, limitations, and corrections stay attached to the conclusion so you can judge it yourself.",
+      "Longer explanations of evals, agents, retrieval, and the production details that a clean demo leaves out.",
+    href: "/blog",
+    action: "Read the field notes",
+    accent: "bg-[#F59E0B]",
   },
 ] as const;
 
@@ -34,127 +43,197 @@ const CURRENT_FOCUS = [
   {
     topic: "Evaluation",
     question: "How do you measure behavior instead of demo quality?",
-    detail: "Evals, regression gates, observability, and release evidence.",
+    detail: "Regression gates, release evidence, observability, and useful human judgment.",
   },
   {
     topic: "Agents",
-    question: "What changes when tool use becomes a production system?",
-    detail: "Interfaces, permissions, failure modes, and operational control.",
+    question: "Where should an autonomous workflow be forced to stop?",
+    detail: "Tool boundaries, permissions, timeouts, review points, and incident containment.",
   },
   {
     topic: "Retrieval",
-    question: "Where does a RAG system actually lose quality?",
-    detail: "Freshness, embeddings, ranking, context construction, and drift.",
+    question: "When quality drops, did retrieval fail or did the index drift?",
+    detail: "Freshness, embeddings, ranking, context construction, and operational diagnosis.",
   },
 ] as const;
 
+const EVIDENCE_STANDARD = [
+  { term: "Source", detail: "The primary evidence behind the claim." },
+  { term: "Test status", detail: "What was tested, and what was not." },
+  { term: "Limits", detail: "The uncertainty that still changes the decision." },
+  { term: "Correction", detail: "A visible path to amend the record." },
+] as const;
+
+function ProofLoop() {
+  return (
+    <div className="proof-loop-panel" aria-label="Engineerious publishing method">
+      <div className="flex items-center justify-between gap-4 border-b border-white/15 px-5 py-4 sm:px-6">
+        <div>
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-white/45">
+            Publishing method
+          </p>
+          <p className="mt-1 text-[15px] font-semibold text-white">The Proof Loop</p>
+        </div>
+        <span className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-white/55">
+          <span className="status-pulse" aria-hidden />
+          Human gate active
+        </span>
+      </div>
+
+      <div className="relative mx-auto aspect-square w-full max-w-[31rem] px-3 py-4 sm:p-6">
+        <svg
+          viewBox="0 0 520 520"
+          className="h-full w-full"
+          role="img"
+          aria-labelledby="proof-loop-title proof-loop-description"
+        >
+          <title id="proof-loop-title">Engineerious Proof Loop</title>
+          <desc id="proof-loop-description">
+            Evidence moves through observe, test, and decide before reaching a human publishing checkpoint.
+          </desc>
+          <circle cx="260" cy="260" r="179" className="proof-loop-track" />
+          <path d="M292 84A179 179 0 1 0 438 226" className="proof-loop-active" />
+          <rect x="374" y="102" width="50" height="50" rx="2" fill="#22C55E" />
+
+          <g className="proof-loop-stage">
+            <circle cx="139" cy="129" r="5" />
+            <text x="139" y="113" textAnchor="middle">OBSERVE</text>
+          </g>
+          <g className="proof-loop-stage">
+            <circle cx="112" cy="354" r="5" />
+            <text x="112" y="382" textAnchor="middle">TEST</text>
+          </g>
+          <g className="proof-loop-stage">
+            <circle cx="384" cy="362" r="5" />
+            <text x="384" y="390" textAnchor="middle">DECIDE</text>
+          </g>
+
+          <text x="260" y="224" textAnchor="middle" className="proof-loop-kicker">
+            EVIDENCE BEFORE ADOPTION
+          </text>
+          <text x="260" y="263" textAnchor="middle" className="proof-loop-word">
+            Source
+          </text>
+          <text x="260" y="296" textAnchor="middle" className="proof-loop-word">
+            Status
+          </text>
+          <text x="260" y="329" textAnchor="middle" className="proof-loop-word">
+            Unknowns
+          </text>
+        </svg>
+      </div>
+
+      <dl className="grid grid-cols-2 border-t border-white/15 text-white sm:grid-cols-3">
+        <div className="border-r border-white/15 px-4 py-4 sm:px-5">
+          <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/40">Origin</dt>
+          <dd className="mt-1 text-[13px] font-medium">Always disclosed</dd>
+        </div>
+        <div className="px-4 py-4 sm:border-r sm:border-white/15 sm:px-5">
+          <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/40">Claims</dt>
+          <dd className="mt-1 text-[13px] font-medium">Source attached</dd>
+        </div>
+        <div className="col-span-2 border-t border-white/15 px-4 py-4 sm:col-span-1 sm:border-t-0 sm:px-5">
+          <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/40">Publish</dt>
+          <dd className="mt-1 text-[13px] font-medium">Human decision</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const posts = getPublishedPosts().slice(0, 3);
-  const primaryHref = posts[0] ? `/blog/${posts[0].slug}` : "/subscribe";
-  const primaryLabel = posts[0] ? "Read the latest note" : "Get the next field note";
 
   return (
-    <div>
-      <section className="grid min-h-[calc(100svh-4.5rem)] content-center gap-14 border-b border-rule py-16 sm:py-20 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-20 lg:py-24">
-        <div className="max-w-4xl">
-          <p className="flex items-center gap-3 text-[13px] font-semibold uppercase tracking-[0.12em] text-muted">
-            <span aria-hidden className="h-3 w-3 bg-checkpoint" />
-            For engineers and technical founders
-          </p>
-          <h1 className="font-display mt-7 max-w-4xl text-balance text-[48px] font-semibold leading-[0.98] tracking-[-0.045em] sm:text-[66px] lg:text-[78px]">
-            Build AI systems that hold up outside the demo.
-          </h1>
-          <p className="mt-7 max-w-3xl text-pretty text-[18px] leading-8 text-muted sm:text-[21px]">
-            Engineerious turns fast-moving models, agents, evaluation, and retrieval
-            into practical engineering notes: what changed, what to test, and what can fail.
-          </p>
-          <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3">
-            <Link href={primaryHref} className="btn btn-primary">
-              {primaryLabel}
-            </Link>
-            <a
-              href="#what-you-get"
-              className="inline-flex min-h-11 items-center font-semibold text-fg underline decoration-rule-strong underline-offset-4 hover:decoration-fg"
-            >
-              See what you’ll get
-            </a>
+    <div className="pb-6">
+      <section className="home-hero-grid relative isolate overflow-hidden border-x border-b border-rule">
+        <div className="grid min-h-[calc(100svh-4.5rem)] lg:grid-cols-[minmax(0,1.05fr)_minmax(24rem,0.75fr)]">
+          <div className="flex flex-col justify-center px-5 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 xl:px-16">
+            <p className="flex items-center gap-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-strong">
+              <span aria-hidden className="h-px w-8 bg-accent-strong" />
+              Independent AI engineering desk
+            </p>
+            <h1 className="mt-7 max-w-4xl text-balance text-[52px] font-bold leading-[0.94] tracking-[-0.055em] text-fg sm:text-[70px] lg:text-[76px] xl:text-[88px]">
+              AI releases are not <span className="font-display font-medium italic text-accent-strong">engineering decisions.</span>
+            </h1>
+            <p className="mt-7 max-w-2xl text-pretty text-[18px] leading-8 text-muted sm:text-[20px]">
+              Engineerious traces what changed in models and tools, then turns it into tests,
+              limits, and implementation choices you can inspect.
+            </p>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Link href="/news" className="btn btn-primary px-5">
+                Open the news desk
+                <span aria-hidden>↗</span>
+              </Link>
+              <Link href="/models" className="btn btn-secondary px-5">
+                Inspect model updates
+              </Link>
+            </div>
+            <div className="mt-10 grid max-w-2xl gap-3 border-t border-rule pt-5 text-[13px] leading-5 text-muted sm:grid-cols-2">
+              <p>
+                <span className="font-semibold text-fg">For:</span> engineers and technical founders responsible for systems that must work beyond the demo.
+              </p>
+              <p>
+                <span className="font-semibold text-fg">By:</span> Tharun Chowdary, with AI assistance and review status kept visible.
+              </p>
+            </div>
           </div>
-          <p className="mt-8 text-[15px] text-muted">
-            Written and reviewed by Tharun Chowdary. AI assistance stays disclosed.
-          </p>
-        </div>
 
-        <aside className="border-t border-rule pt-7 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-1">
-          <p className="section-label">At a glance</p>
-          <dl className="mt-4 divide-y divide-rule border-y border-rule">
-            <div className="py-5">
-              <dt className="text-[14px] font-semibold text-fg">Who it’s for</dt>
-              <dd className="mt-1 text-[15px] leading-6 text-muted">
-                Builders responsible for AI that must be reliable, observable, and useful.
-              </dd>
-            </div>
-            <div className="py-5">
-              <dt className="text-[14px] font-semibold text-fg">What you’ll find</dt>
-              <dd className="mt-1 text-[15px] leading-6 text-muted">
-                Field notes, model breakdowns, implementation lessons, and source-backed decisions.
-              </dd>
-            </div>
-            <div className="py-5">
-              <dt className="text-[14px] font-semibold text-fg">What you won’t find</dt>
-              <dd className="mt-1 text-[15px] leading-6 text-muted">
-                Automated link dumps, invented certainty, or first-person claims without review.
-              </dd>
-            </div>
-          </dl>
-        </aside>
+          <div className="flex items-center border-t border-rule bg-[#DCEAF2] p-4 sm:p-8 lg:border-l lg:border-t-0 lg:p-7 xl:p-10">
+            <ProofLoop />
+          </div>
+        </div>
       </section>
 
-      <section id="what-you-get" className="scroll-mt-24 py-20 sm:py-24">
-        <div className="grid gap-8 border-b border-rule pb-10 lg:grid-cols-[18rem_1fr]">
-          <p className="section-label">Why Engineerious exists</p>
+      <section id="desk" className="scroll-mt-24 py-20 sm:py-24" aria-labelledby="desk-heading">
+        <div className="grid gap-6 border-b border-rule pb-8 lg:grid-cols-[minmax(0,1fr)_28rem] lg:items-end">
           <div>
-            <h2 className="font-display max-w-3xl text-balance text-[40px] font-semibold leading-[1.05] tracking-[-0.035em] sm:text-[52px]">
-              Less AI noise. More engineering judgment.
+            <p className="section-label text-accent-strong">The desk</p>
+            <h2 id="desk-heading" className="mt-3 max-w-3xl text-balance text-[40px] font-bold leading-[1.02] tracking-[-0.04em] sm:text-[56px]">
+              Choose the evidence you need.
             </h2>
-            <p className="mt-5 max-w-2xl text-[18px] leading-8 text-muted">
-              Use the site to understand a change, test it responsibly, and make a better
-              implementation decision.
-            </p>
           </div>
+          <p className="max-w-xl text-[17px] leading-7 text-muted lg:pb-1">
+            Each route answers a different question. News tells you what moved. Models tell you what to compare. Field notes show how the system behaves.
+          </p>
         </div>
 
-        <ol>
-          {REASONS_TO_VISIT.map((reason) => (
-            <li
-              key={reason.number}
-              className="grid gap-3 border-b border-rule py-8 sm:grid-cols-[4rem_9rem_1fr] sm:gap-6 lg:grid-cols-[5rem_12rem_1fr] lg:py-10"
+        <div className="grid border-b border-rule md:grid-cols-3">
+          {DESK_LANES.map((lane) => (
+            <Link
+              key={lane.href}
+              href={lane.href}
+              className="desk-lane group relative flex min-h-[22rem] flex-col border-x border-t border-rule bg-surface p-6 md:min-h-[25rem] md:border-l-0 md:border-r md:p-7 first:md:border-l"
             >
-              <span className="text-[14px] font-semibold text-muted">{reason.number}</span>
-              <span className="text-[14px] font-semibold uppercase tracking-[0.1em] text-fg">
-                {reason.label}
+              <span className={`absolute inset-x-0 top-0 h-1 ${lane.accent}`} aria-hidden />
+              <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.15em] text-muted">
+                {lane.code}
               </span>
-              <div className="grid gap-3 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-12">
-                <h3 className="font-display text-[27px] font-semibold leading-tight">
-                  {reason.title}
-                </h3>
-                <p className="max-w-xl text-[16px] leading-7 text-muted">{reason.detail}</p>
+              <div className="mt-14">
+                <p className="text-[15px] font-semibold text-accent-strong">{lane.prompt}</p>
+                <h3 className="mt-2 text-[36px] font-bold leading-none tracking-[-0.035em]">{lane.title}</h3>
+                <p className="mt-5 max-w-sm text-[16px] leading-7 text-muted">{lane.detail}</p>
               </div>
-            </li>
+              <span className="mt-auto flex items-center justify-between border-t border-rule pt-5 text-[14px] font-semibold">
+                {lane.action}
+                <span className="desk-lane-arrow text-[21px]" aria-hidden>→</span>
+              </span>
+            </Link>
           ))}
-        </ol>
+        </div>
       </section>
 
       {posts.length > 0 && (
         <section aria-labelledby="writing-heading" className="pb-20 sm:pb-24">
-          <div className="flex flex-wrap items-end justify-between gap-5 border-b border-fg pb-5">
+          <div className="flex flex-wrap items-end justify-between gap-5 border-b-2 border-fg pb-5">
             <div>
-              <p className="section-label">Latest writing</p>
-              <h2 id="writing-heading" className="font-display mt-2 text-[38px] font-semibold leading-tight">
-                Field notes and decisions
+              <p className="section-label text-accent-strong">Verified writing</p>
+              <h2 id="writing-heading" className="mt-2 text-[38px] font-bold leading-tight tracking-[-0.03em]">
+                Latest field notes
               </h2>
             </div>
             <Link href="/blog" className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4">
-              Read all writing
+              Read all field notes
             </Link>
           </div>
           <ul>
@@ -164,14 +243,14 @@ export default function HomePage() {
                   href={`/blog/${post.slug}`}
                   className="grid gap-3 py-8 transition-colors duration-150 hover:bg-surface sm:grid-cols-[10rem_1fr_auto] sm:items-start sm:px-4"
                 >
-                  <span className="text-[13px] font-semibold uppercase tracking-[0.08em] text-muted">
+                  <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
                     {post.pillar.replaceAll("-", " ")}
                   </span>
                   <span>
-                    <span className="font-display block text-[28px] font-semibold leading-tight">{post.title}</span>
+                    <span className="block text-[28px] font-bold leading-tight tracking-[-0.02em]">{post.title}</span>
                     <span className="mt-2 block max-w-2xl text-[16px] leading-7 text-muted">{post.dek}</span>
                   </span>
-                  <span className="text-[13px] text-muted">{isoDate(post.date)} · {post.readingMinutes} min</span>
+                  <span className="font-mono text-[11px] text-muted">{isoDate(post.date)} · {post.readingMinutes} min</span>
                 </Link>
               </li>
             ))}
@@ -179,54 +258,67 @@ export default function HomePage() {
         </section>
       )}
 
-      <section className="bg-[#111827] px-5 py-14 text-white sm:px-10 sm:py-16 lg:px-14" aria-labelledby="focus-heading">
-        <div className="grid gap-8 border-b border-white/25 pb-8 lg:grid-cols-[18rem_1fr]">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/55">Current workbench</p>
-          <div>
-            <h2 id="focus-heading" className="font-display text-[40px] font-semibold leading-tight sm:text-[48px]">
-              Questions I’m working through now
+      <section className="border border-rule bg-surface" aria-labelledby="workbench-heading">
+        <div className="grid lg:grid-cols-[0.72fr_1.28fr]">
+          <div className="border-b border-rule p-6 sm:p-10 lg:border-b-0 lg:border-r lg:p-12">
+            <p className="section-label text-accent-strong">Open research log</p>
+            <h2 id="workbench-heading" className="mt-4 text-balance text-[39px] font-bold leading-[1.04] tracking-[-0.04em] sm:text-[48px]">
+              The questions behind the next issue.
             </h2>
-            <p className="mt-4 max-w-2xl text-[17px] leading-7 text-white/65">
-              These are research directions, not published conclusions. The first verified notes are under review.
+            <p className="mt-5 text-[17px] leading-7 text-muted">
+              These are active investigations, not polished conclusions. The first verified notes are under review.
             </p>
+            <Link href="/about" className="mt-8 inline-flex min-h-11 items-center text-[14px] font-semibold text-accent-strong underline underline-offset-4">
+              See the publishing standard
+            </Link>
           </div>
+
+          <ul className="divide-y divide-rule">
+            {CURRENT_FOCUS.map((item) => (
+              <li key={item.topic} className="group grid gap-3 p-6 sm:grid-cols-[8rem_1fr] sm:p-8 lg:p-9">
+                <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-strong">
+                  {item.topic}
+                </span>
+                <div>
+                  <h3 className="max-w-2xl text-[21px] font-semibold leading-7 tracking-[-0.015em]">{item.question}</h3>
+                  <p className="mt-2 max-w-2xl text-[15px] leading-6 text-muted">{item.detail}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
-        <ol>
-          {CURRENT_FOCUS.map((item, index) => (
-            <li key={item.topic} className="grid gap-3 border-b border-white/20 py-7 md:grid-cols-[4rem_10rem_1fr] md:gap-6">
-              <span className="text-[13px] text-white/45">0{index + 1}</span>
-              <span className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[#22c55e]">{item.topic}</span>
-              <div className="grid gap-2 lg:grid-cols-[minmax(0,28rem)_1fr] lg:gap-12">
-                <h3 className="text-[20px] font-semibold leading-7">{item.question}</h3>
-                <p className="text-[15px] leading-6 text-white/60">{item.detail}</p>
-              </div>
-            </li>
+
+        <dl className="grid border-t border-rule sm:grid-cols-2 lg:grid-cols-4">
+          {EVIDENCE_STANDARD.map((item) => (
+            <div key={item.term} className="border-b border-rule p-5 sm:border-r lg:border-b-0 last:border-r-0">
+              <dt className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-fg">{item.term}</dt>
+              <dd className="mt-2 text-[14px] leading-6 text-muted">{item.detail}</dd>
+            </div>
           ))}
-        </ol>
+        </dl>
       </section>
 
-      <section className="grid gap-8 border-b border-rule py-20 sm:py-24 lg:grid-cols-[18rem_1fr]">
-        <p className="section-label">Behind the publication</p>
-        <div className="max-w-3xl">
-          <h2 className="font-display text-[38px] font-semibold leading-tight sm:text-[46px]">
-            I’m Tharun Chowdary.
+      <section className="grid gap-12 py-20 sm:py-24 lg:grid-cols-[0.78fr_1.22fr] lg:gap-16" aria-label="Publication and newsletter">
+        <div className="lg:pt-2">
+          <p className="section-label text-accent-strong">Behind the desk</p>
+          <h2 className="mt-4 text-[39px] font-bold leading-[1.04] tracking-[-0.04em] sm:text-[48px]">
+            Built in public by Tharun Chowdary.
           </h2>
-          <p className="mt-5 text-[18px] leading-8 text-muted">
-            I use Engineerious to learn AI engineering in public, separate evidence from
-            hype, and turn difficult system behavior into useful explanations.
+          <p className="mt-5 max-w-xl text-[17px] leading-7 text-muted">
+            I use Engineerious to learn AI engineering in public, separate evidence from hype, and turn difficult system behavior into useful explanations.
           </p>
-          <Link href="/about" className="mt-6 inline-flex min-h-11 items-center font-semibold underline underline-offset-4">
-            About Tharun and the publishing standard
+          <Link href="/about" className="mt-7 inline-flex min-h-11 items-center text-[14px] font-semibold text-accent-strong underline underline-offset-4">
+            About Tharun and Engineerious
           </Link>
         </div>
-      </section>
 
-      <div className="py-20 sm:py-24">
-        <NewsletterCTA
-          heading="Get the next field note"
-          blurb="Practical AI engineering notes sent when there is verified work worth sharing. No automated link dump and no fixed-volume promise."
-        />
-      </div>
+        <div className="bg-[#E4F0F6] p-6 sm:p-9">
+          <NewsletterCTA
+            heading="Stay close to the work"
+            blurb="Get a field note when a useful, verified conclusion is ready. No automated link dump and no volume promise."
+          />
+        </div>
+      </section>
     </div>
   );
 }

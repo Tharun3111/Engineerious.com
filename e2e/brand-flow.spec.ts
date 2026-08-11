@@ -6,11 +6,11 @@ test("visitor-first public shell explains the value and exposes its core section
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: "Build AI systems that hold up outside the demo.",
+      name: "AI releases are not engineering decisions.",
     }),
   ).toBeVisible();
-  await expect(page.getByText("For engineers and technical founders", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Get the next field note" }).first()).toBeVisible();
+  await expect(page.getByText("Independent AI engineering desk", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open the news desk" }).first()).toBeVisible();
   await expect(page.getByText("The first verified notes are under review.")).toBeVisible();
   await expect(page.getByRole("link", { name: "News", exact: true }).first()).toBeVisible();
   await expect(page.getByRole("link", { name: "Models", exact: true }).first()).toBeVisible();

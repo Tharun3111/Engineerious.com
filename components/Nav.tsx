@@ -11,7 +11,7 @@ const LINKS = [
 
 export function Nav() {
   return (
-    <header className="sticky top-0 z-20 border-b border-white/15 bg-[#111827] text-white">
+    <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0D1B24]/[0.98] text-white backdrop-blur">
       <nav aria-label="Primary" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex min-h-18 items-center gap-6 py-2.5">
           <Link
@@ -21,6 +21,12 @@ export function Nav() {
           >
             <Logo priority className="h-auto w-[148px] sm:w-[184px]" />
           </Link>
+
+          <span className="hidden border-l border-white/15 pl-5 font-mono text-[10px] uppercase leading-4 tracking-[0.14em] text-white/45 lg:block">
+            Independent AI
+            <br />
+            engineering desk
+          </span>
 
           <ul className="ml-auto hidden items-center gap-1 md:flex">
             {LINKS.map((link) => (
@@ -37,9 +43,9 @@ export function Nav() {
 
           <Link
             href="/subscribe"
-            className="ml-auto inline-flex min-h-11 items-center justify-center border border-[#22c55e] bg-[#22c55e] px-4 text-[14px] font-semibold text-[#111827] transition-colors duration-150 hover:bg-white md:ml-2"
+            className="ml-auto inline-flex min-h-11 items-center justify-center border border-[#22c55e] bg-[#22c55e] px-4 text-[14px] font-semibold text-[#0D1B24] transition-colors duration-150 hover:bg-white md:ml-2"
           >
-            Get the next note
+            Join the field notes
           </Link>
         </div>
 
