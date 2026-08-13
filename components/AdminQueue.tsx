@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import type { Item, RepurposeJob, Submission } from "@/db/schema";
+import type { Digest, Item, Post, RepurposeJob, Submission } from "@/db/schema";
 import { hostname } from "@/lib/dedupe";
 import { timeAgo } from "@/lib/time";
 
@@ -31,20 +31,32 @@ async function post(path: string, body: unknown) {
 
 function useAction() {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
+  // A real, eagerly-set flag, not useTransition's `pending` alone — that only
+  // becomes true inside startTransition, which runs AFTER the awaited request
+  // already resolved. A fast double-click during the network round-trip would
+  // otherwise fire twice with the button never actually disabled for it (confirmed
+  // as a real gap on the single-highest-stakes button in the app — digest approve).
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const run = async (fn: () => Promise<unknown>) => {
+  const run = async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
+    if (busy) return undefined;
+    setBusy(true);
     setError(null);
     try {
-      await fn();
+      const result = await fn();
       startTransition(() => router.refresh());
+      return result;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      return undefined;
+    } finally {
+      setBusy(false);
     }
   };
 
-  return { run, pending, error };
+  return { run, pending: busy, error };
 }
 
 export function PendingItemsQueue({ items }: { items: Item[] }) {
@@ -201,7 +213,7 @@ export function RepurposeQueue({ jobs }: { jobs: RepurposeJob[] }) {
               )}
               {job.status === "approved" && (
                 <p className="mt-2 text-[12.5px] text-muted">
-                  Copy-ready for manual LinkedIn publication. This site has not posted it.
+                  Copy-ready for manual {job.platform} publication. This site has not posted it.
                 </p>
               )}
             </li>
@@ -259,6 +271,164 @@ export function SubmissionsQueue({ submissions }: { submissions: Submission[] })
             </div>
           </li>
         ))}
+      </ul>
+    </div>
+  );
+}
+
+export type ReviewReport = {
+  groundingViolations: Array<{ quote: string; issue: string }>;
+  voiceViolations: Array<{ quote: string; issue: string }>;
+  overallVerdict: string;
+  readsAsGenericAiContent: boolean;
+};
+
+/**
+ * The daily-pipeline review queue. Approving publishes the post AND sends the
+ * newsletter in one action — see /api/admin/digests. Nothing upstream of this
+ * component can do either; this is the only human gate in the whole pipeline.
+ */
+export function DigestQueue({ rows }: { rows: Array<{ digest: Digest; post: Post | null }> }) {
+  const { run, pending, error } = useAction();
+  const [expanded, setExpanded] = useState<number | null>(null);
+  // Approving returns 200 even when the post published but the email failed to
+  // send (publishing must not roll back over an email problem) — so that partial
+  // failure has to be surfaced from the response body, not from useAction's error
+  // state, which only fires on a non-2xx throw.
+  const [emailWarning, setEmailWarning] = useState<string | null>(null);
+
+  if (rows.length === 0) {
+    return <p className="text-[13.5px] text-muted">No digests awaiting review.</p>;
+  }
+
+  return (
+    <div>
+      {error && <p className="mb-2 text-[13px] text-accent-strong">{error}</p>}
+      {emailWarning && <p className="mb-2 text-[13px] text-accent-strong">Published, but {emailWarning}</p>}
+      <ul className="space-y-4">
+        {rows.map(({ digest, post: postRow }) => {
+          const review = (digest.reviewReport as ReviewReport | null) ?? null;
+          const isOpen = expanded === digest.id;
+          const issueCount = (review?.groundingViolations.length ?? 0) + (review?.voiceViolations.length ?? 0);
+
+          return (
+            <li key={digest.id} className="card p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="font-mono text-[12.5px] text-muted">
+                    {digest.date} · digest #{digest.id}
+                  </p>
+                  <p className="text-[15px] font-semibold">{postRow?.title ?? "(no post found)"}</p>
+                  {postRow?.dek && <p className="text-[13.5px] text-muted">{postRow.dek}</p>}
+                </div>
+                <span className={issueCount > 0 ? "pill pill-accent" : "pill"}>
+                  {issueCount > 0 ? `${issueCount} review flag${issueCount === 1 ? "" : "s"}` : "no flags"}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setExpanded(isOpen ? null : digest.id)}
+                className="btn btn-secondary btn-sm mt-3"
+              >
+                {isOpen ? "Hide" : "Review"} full draft
+              </button>
+
+              {isOpen && (
+                <div className="mt-3 space-y-3">
+                  {review && (
+                    <div className="rounded-md border border-rule p-3 text-[12.5px]">
+                      <p className="font-semibold">{review.overallVerdict}</p>
+                      {review.readsAsGenericAiContent && (
+                        <p className="mt-1 text-accent-strong">Flagged: reads as generic AI content.</p>
+                      )}
+                      {review.groundingViolations.map((v, i) => (
+                        <p key={`g${i}`} className="mt-2">
+                          <span className="font-semibold text-accent-strong">Grounding:</span> &quot;{v.quote}&quot; — {v.issue}
+                        </p>
+                      ))}
+                      {review.voiceViolations.map((v, i) => (
+                        <p key={`v${i}`} className="mt-2">
+                          <span className="font-semibold text-accent-strong">Voice:</span> &quot;{v.quote}&quot; — {v.issue}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  {postRow?.tldr && (
+                    <p className="field text-[13px] leading-relaxed">
+                      <span className="font-semibold">TL;DR:</span> {postRow.tldr}
+                    </p>
+                  )}
+                  {postRow?.keyFacts && (postRow.keyFacts as string[]).length > 0 && (
+                    <ul className="field space-y-1 text-[13px] leading-relaxed">
+                      {(postRow.keyFacts as string[]).map((fact, i) => (
+                        <li key={i}>• {fact}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {postRow?.relevantTickers && (postRow.relevantTickers as string[]).length > 0 && (
+                    <p className="field font-mono text-[12.5px]">
+                      <span className="font-semibold">Tickers:</span>{" "}
+                      {(postRow.relevantTickers as string[]).join(", ")}
+                    </p>
+                  )}
+                  {postRow?.diagram && (
+                    <div className="field text-[13px] leading-relaxed">
+                      <span className="font-semibold">
+                        Diagram ({postRow.diagram.type}): {postRow.diagram.title}
+                      </span>
+                      <ol className="mt-1 list-decimal space-y-1 pl-5">
+                        {postRow.diagram.steps.map((s, i) => (
+                          <li key={i}>
+                            <span className="font-semibold">{s.label}:</span> {s.detail}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                  {postRow?.body && (
+                    <pre className="field max-h-96 overflow-y-auto whitespace-pre-wrap font-mono text-[12px] leading-relaxed">
+                      {postRow.body}
+                    </pre>
+                  )}
+                  {digest.emailHtml && (
+                    <details className="text-[12.5px]">
+                      <summary className="cursor-pointer text-muted">Email preview (raw HTML)</summary>
+                      <pre className="field mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap font-mono text-[11px]">
+                        {digest.emailHtml}
+                      </pre>
+                    </details>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={async () => {
+                    setEmailWarning(null);
+                    const result = (await run(() =>
+                      post("/api/admin/digests", { id: digest.id, action: "approve" }),
+                    )) as { emailError?: string | null } | undefined;
+                    if (result?.emailError) setEmailWarning(result.emailError);
+                  }}
+                  className="btn btn-primary btn-sm disabled:opacity-60"
+                >
+                  Approve — publish &amp; email
+                </button>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => run(() => post("/api/admin/digests", { id: digest.id, action: "reject" }))}
+                  className="btn btn-secondary btn-sm disabled:opacity-60"
+                >
+                  Reject
+                </button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

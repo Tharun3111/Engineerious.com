@@ -6,31 +6,31 @@ export const SECTIONS = [
     label: "News",
     path: "/news",
     eyebrow: "Signal / 01",
-    blurb: "AI news, filtered for builders.",
+    blurb: "AI news for engineering decisions.",
     description:
-      "Important releases, research, policy shifts, and incidents—reviewed for what changed and why an engineer should care.",
+      "Track important releases, research, policy changes, and incidents. Each update links to the source and explains the engineering impact.",
     emptyMessage:
-      "No reviewed news is published yet. This page only shows updates after the source and engineering impact have been checked.",
+      "No reviewed news yet. Updates appear here after the source and engineering impact have been checked. Subscribe below to get new analysis.",
   },
   {
     type: "model",
     label: "Models",
     path: "/models",
     eyebrow: "Model intelligence / 02",
-    blurb: "Model releases, translated into engineering impact.",
+    blurb: "Model updates compared for real-world use.",
     description:
-      "New models and meaningful updates compared by capability, cost, constraints, and the tests worth running before adoption.",
+      "Compare new models by capability, access, cost, and constraints. Each update includes the tests worth running before you switch.",
     emptyMessage:
-      "No reviewed model update is published yet. Releases appear here after their claims, access, and practical tradeoffs have been checked.",
+      "No reviewed model updates yet. Releases appear here after their claims, access, and practical tradeoffs have been checked. Subscribe below to get new analysis.",
   },
   {
     type: "oss",
-    label: "Open Source",
+    label: "Open source",
     path: "/open-source",
     eyebrow: "Open systems / 03",
-    blurb: "Repos, releases, launches.",
-    description: "Open-source tools and releases with practical engineering context.",
-    emptyMessage: "No reviewed open-source release is published yet.",
+    blurb: "Open-source releases worth evaluating.",
+    description: "Find new AI tools and meaningful releases with source links, adoption context, and practical tradeoffs.",
+    emptyMessage: "No reviewed open-source releases yet. Check back after the next editorial review.",
   },
 ] as const satisfies ReadonlyArray<{
   type: ItemType;

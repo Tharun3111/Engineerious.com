@@ -4,8 +4,10 @@ import "@fontsource-variable/ibm-plex-sans/wght.css";
 import "@fontsource-variable/newsreader/wght.css";
 
 import { Footer } from "@/components/Footer";
+import { JsonLd } from "@/components/JsonLd";
 import { Nav } from "@/components/Nav";
 import { env } from "@/lib/env";
+import { AUTHOR_NAME, SITE_NAME } from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +17,7 @@ export const metadata: Metadata = {
     template: "%s · Engineerious",
   },
   description:
-    "Practical notes for engineers and technical founders building reliable AI systems: models, agents, evaluation, retrieval, and production lessons.",
+    "Source-checked AI news, model analysis, and production guides for engineers and technical founders building reliable AI systems.",
   alternates: {
     canonical: "/",
     types: { "application/rss+xml": "/rss.xml" },
@@ -30,16 +32,46 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    siteName: "Engineerious",
+    siteName: SITE_NAME,
     url: env.siteUrl,
   },
+  twitter: {
+    card: "summary_large_image",
+  },
+  // Undefined fields render no tag at all — see lib/env.ts. Google Search Console
+  // and Bing Webmaster Tools each hand you a token during "add property"; paste it
+  // as GOOGLE_SITE_VERIFICATION / BING_SITE_VERIFICATION in Vercel and redeploy
+  // (these bake into the static homepage at build time, so an env-var-only change
+  // needs a redeploy to take effect).
+  verification: {
+    google: env.googleSiteVerification,
+    other: env.bingSiteVerification ? { "msvalidate.01": env.bingSiteVerification } : undefined,
+  },
   robots: { index: true, follow: true },
+};
+
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: SITE_NAME,
+  url: env.siteUrl,
+  logo: `${env.siteUrl}/icon.svg`,
+  founder: { "@type": "Person", name: AUTHOR_NAME },
+};
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: SITE_NAME,
+  url: env.siteUrl,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
+        <JsonLd data={organizationJsonLd} />
+        <JsonLd data={websiteJsonLd} />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-10 focus:rounded-md focus:bg-accent focus:px-3 focus:py-1.5 focus:text-accent-fg"

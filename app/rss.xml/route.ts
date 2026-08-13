@@ -19,7 +19,7 @@ function escapeXml(value: string): string {
  */
 export async function GET() {
   const site = env.siteUrl.replace(/\/$/, "");
-  const posts = getPublishedPosts();
+  const posts = await getPublishedPosts();
 
   const entries = posts
     .map((post) => ({

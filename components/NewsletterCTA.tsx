@@ -10,8 +10,8 @@ type Status = "idle" | "submitting" | "ok" | "error";
  */
 export function NewsletterCTA({
   variant = "inline",
-  heading = "The Engineerious newsletter",
-  blurb = "Occasional notes on practical AI engineering — sent when there is something worth sharing.",
+  heading = "Get practical AI engineering notes",
+  blurb = "Receive source-checked analysis of models, agents, evaluation, retrieval, and production reliability. Sent only when there is useful work to share.",
 }: {
   variant?: "inline" | "compact";
   heading?: string;
@@ -34,13 +34,19 @@ export function NewsletterCTA({
       });
       const body = (await res.json()) as { ok?: boolean; error?: string };
 
-      if (!res.ok || !body.ok) throw new Error(body.error ?? "Subscription failed.");
+      if (!res.ok || !body.ok) {
+        throw new Error(body.error ?? "We couldn't add this email. Try again in a few minutes.");
+      }
       setStatus("ok");
-      setMessage("Subscribed. Check your inbox for the confirmation.");
+      setMessage("You're subscribed. Check your inbox to confirm.");
       setEmail("");
     } catch (error) {
       setStatus("error");
-      setMessage(error instanceof Error ? error.message : "Subscription failed.");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "We couldn't add this email. Try again in a few minutes.",
+      );
     }
   }
 
@@ -77,7 +83,7 @@ export function NewsletterCTA({
               className="field min-w-0 flex-1"
             />
             <button type="submit" disabled={status === "submitting"} className="btn btn-primary disabled:cursor-not-allowed disabled:opacity-60">
-              {status === "submitting" ? "Subscribing…" : "Get the next note"}
+              {status === "submitting" ? "Subscribing…" : "Subscribe for updates"}
             </button>
           </div>
         </form>

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authorizeAdmin } from "@/lib/auth";
-import { getPost } from "@/lib/content/blog";
+import { getPost, isPublished } from "@/lib/content/blog";
 import { llmConfigured } from "@/lib/llm";
 import { PLATFORMS, repurpose } from "@/lib/repurpose";
 import { resolveLaunchPlatforms } from "@/lib/repurpose/launch-policy";
@@ -54,9 +54,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const post = getPost(parsed.data.slug);
+  const post = await getPost(parsed.data.slug);
   if (!post) {
     return NextResponse.json({ error: `No post named ${parsed.data.slug}` }, { status: 404 });
+  }
+  // getPost() resolves any slug, draft or published, for /admin's preview use. This
+  // route spends real LLM tokens producing real distributable drafts, so it always
+  // requires the true published state (isPublished, not the dev-preview isVisible) —
+  // no legitimate case exists for repurposing a post a human hasn't approved yet.
+  if (!isPublished(post)) {
+    return NextResponse.json(
+      { error: `"${parsed.data.slug}" hasn't been approved yet — repurpose after it's published.` },
+      { status: 409 },
+    );
   }
 
   try {
@@ -66,7 +76,7 @@ export async function POST(request: Request) {
       generated: results.filter((r) => r.ok).length,
       failed: results.filter((r) => !r.ok),
       results,
-      next: "Review at /admin, approve the copy, then paste it into LinkedIn manually.",
+      next: `Review at /admin, approve the copy, then paste it into ${requestedPlatforms.join(" or ")} manually.`,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

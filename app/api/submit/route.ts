@@ -40,7 +40,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("[submit]", error);
     return NextResponse.json(
-      { ok: false, error: "Could not save the submission right now." },
+      { ok: false, error: "We couldn't submit this link. Try again in a few minutes." },
       { status: 503 },
     );
   }

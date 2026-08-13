@@ -6,27 +6,27 @@ test("visitor-first public shell explains the value and exposes its core section
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: "AI releases are not engineering decisions.",
+      name: "Turn AI releases into engineering decisions.",
     }),
   ).toBeVisible();
-  await expect(page.getByText("Independent AI engineering desk", { exact: true }).first()).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open the news desk" }).first()).toBeVisible();
-  await expect(page.getByText("The first verified notes are under review.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "News", exact: true }).first()).toBeVisible();
+  await expect(page.getByText("AI news, model analysis, and production guides", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Read AI news" }).first()).toBeVisible();
+  await expect(page.getByText("Finished analysis moves to the engineering blog after review.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "AI news", exact: true }).first()).toBeVisible();
   await expect(page.getByRole("link", { name: "Models", exact: true }).first()).toBeVisible();
   await expect(page.getByRole("link", { name: "Blog", exact: true }).first()).toBeVisible();
 
   await page.goto("/about");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Learning how AI systems behave outside the demo.",
+    "Turning AI engineering work into useful public knowledge.",
   );
 });
 
 test("news, models, and blog are distinct public endpoints", async ({ page }) => {
   const endpoints = [
-    ["/news", "AI news, filtered for builders."],
-    ["/models", "Model releases, translated into engineering impact."],
-    ["/blog", "Deep dives from building and testing AI systems."],
+    ["/news", "AI news for engineering decisions."],
+    ["/models", "Model updates compared for real-world use."],
+    ["/blog", "Practical guides for building reliable AI systems."],
   ] as const;
 
   for (const [path, heading] of endpoints) {
@@ -37,11 +37,23 @@ test("news, models, and blog are distinct public endpoints", async ({ page }) =>
   }
 });
 
-test("remaining deferred research surfaces return 404", async ({ request }) => {
-  for (const path of ["/open-source", "/resources", "/submit"]) {
+test("open-source, resources, and submit are live once PUBLIC_RESEARCH_ENABLED=true", async ({
+  page,
+  request,
+}) => {
+  const endpoints = [
+    ["/open-source", "Open-source releases worth evaluating."],
+    ["/resources", "Guides and templates for reliable AI systems"],
+    ["/submit", "Suggest a link for review"],
+  ] as const;
+
+  for (const [path, heading] of endpoints) {
     const response = await request.get(path);
-    expect(response.status(), path).toBe(404);
-    expect(response.headers()["x-robots-tag"], path).toContain("noindex");
+    expect(response.status(), path).toBe(200);
+    expect(response.headers()["x-robots-tag"], path).toBeUndefined();
+
+    await page.goto(path);
+    await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
   }
 });
 
@@ -55,7 +67,7 @@ test("newsletter error is truthful and recoverable", async ({ page }) => {
   });
   await page.goto("/subscribe");
   await page.getByLabel("Email address").fill("reader@example.com");
-  await page.getByRole("button", { name: "Get the next note" }).click();
+  await page.getByRole("button", { name: "Subscribe for updates" }).click();
   await expect(page.getByRole("status")).toHaveText("Newsletter is not connected yet.");
   await expect(page.getByRole("status")).toHaveAttribute("data-subscribe-status", "error");
 });
@@ -74,11 +86,11 @@ test("newsletter prevents duplicate submits while the provider is slow", async (
 
   await page.goto("/subscribe");
   await page.getByLabel("Email address").fill("reader@example.com");
-  const submit = page.getByRole("button", { name: "Get the next note" });
+  const submit = page.getByRole("button", { name: "Subscribe for updates" });
   await submit.click();
   await expect(page.getByRole("button", { name: "Subscribing…" })).toBeDisabled();
   await expect(page.getByRole("status")).toHaveText(
-    "Subscribed. Check your inbox for the confirmation.",
+    "You're subscribed. Check your inbox to confirm.",
   );
   await expect(page.getByLabel("Email address")).toHaveValue("");
   expect(requests).toBe(1);

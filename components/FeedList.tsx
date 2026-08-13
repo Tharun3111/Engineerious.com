@@ -19,13 +19,13 @@ export function FeedList({
   items,
   error = null,
   startRank = 1,
-  emptyMessage = "No items yet. The ingestion cron has not run, or everything it found is awaiting approval.",
+  emptyMessage = "No reviewed updates yet. New items appear here after editorial review.",
 }: FeedListProps) {
   if (error) {
     return (
       <div data-feed-state="error" role="alert" className="border-y border-rule py-8">
-        <p className="font-semibold">This section is temporarily unavailable.</p>
-        <p className="mt-1 text-[15px] text-muted">Please try again shortly.</p>
+        <p className="font-semibold">This section couldn&rsquo;t load</p>
+        <p className="mt-1 text-[15px] text-muted">Refresh the page or try again in a few minutes.</p>
       </div>
     );
   }

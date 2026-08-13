@@ -34,7 +34,7 @@ export const RESOURCE_TYPE_LABEL: Record<ResourceType, string> = {
 export const RESOURCES: Resource[] = [
   {
     slug: "eval-metric-selection-checklist",
-    title: "Eval Metric Selection Checklist",
+    title: "Eval metric selection checklist",
     description:
       "The five-step procedure for testing whether a metric actually separates a good build from a regressed one, before it goes in your CI gate.",
     type: "cheatsheet",
@@ -44,7 +44,7 @@ export const RESOURCES: Resource[] = [
   },
   {
     slug: "mcp-server-starter",
-    title: "MCP Server Starter (TypeScript)",
+    title: "MCP server starter (TypeScript)",
     description:
       "A minimal, production-shaped MCP server template: per-tool timeouts, a circuit breaker, and schema versioning wired in from the start.",
     type: "template",
@@ -54,7 +54,7 @@ export const RESOURCES: Resource[] = [
   },
   {
     slug: "rag-index-health-queries",
-    title: "RAG Index Health Queries",
+    title: "RAG index health queries",
     description:
       "The four SQL queries that diagnose most retrieval regressions — freshness, embedding-model drift, source-mix shift, and empty-filter rate.",
     type: "cheatsheet",
@@ -64,7 +64,7 @@ export const RESOURCES: Resource[] = [
   },
   {
     slug: "llm-as-judge-rubric-template",
-    title: "LLM-as-Judge Rubric Template",
+    title: "LLM-as-judge rubric template",
     description:
       "A per-claim decomposition rubric that holds up better than a 1–5 Likert score — the shape that survived the 45-metric teardown.",
     type: "template",

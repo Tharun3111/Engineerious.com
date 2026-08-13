@@ -78,21 +78,21 @@ export async function ItemDetail({ id, expectedType }: { id: string; expectedTyp
       </div>
 
       <section className="card p-5">
-        <h2 className="section-label">Provenance</h2>
+        <h2 className="section-label">Source and ranking details</h2>
         <dl className="mt-2 grid grid-cols-[10rem_1fr] gap-y-1 font-mono text-[12.5px]">
-          <dt className="text-muted">adapter</dt>
+          <dt className="text-muted">Source adapter</dt>
           <dd>{item.sourceSlug}</dd>
-          <dt className="text-muted">source weight</dt>
+          <dt className="text-muted">Source weight</dt>
           <dd>{item.sourceWeight}</dd>
-          <dt className="text-muted">points</dt>
+          <dt className="text-muted">Points</dt>
           <dd>{item.points}</dd>
-          <dt className="text-muted">age</dt>
+          <dt className="text-muted">Age</dt>
           <dd>{age.toFixed(1)} h</dd>
-          <dt className="text-muted">score (stored)</dt>
+          <dt className="text-muted">Stored score</dt>
           <dd>{item.score.toFixed(5)}</dd>
-          <dt className="text-muted">score (now)</dt>
+          <dt className="text-muted">Current score</dt>
           <dd>{liveScore.toFixed(5)}</dd>
-          <dt className="text-muted">first seen</dt>
+          <dt className="text-muted">First seen</dt>
           <dd>{item.firstSeen.toISOString()}</dd>
         </dl>
       </section>

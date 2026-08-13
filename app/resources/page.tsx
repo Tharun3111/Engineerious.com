@@ -6,7 +6,7 @@ import { PillarBadge } from "@/components/PillarBadge";
 import { RESOURCE_TYPE_LABEL, RESOURCES } from "@/lib/resources";
 
 export const metadata: Metadata = {
-  title: "Free Resources",
+  title: "Free resources",
   description:
     "Guides, templates, and cheatsheets for eval-first AI engineering, MCP in production, and production RAG — free, no signup.",
   alternates: { canonical: "/resources" },
@@ -16,13 +16,13 @@ export default function ResourcesPage() {
   return (
     <div className="space-y-8 py-8">
       <header className="max-w-2xl space-y-2">
-        <p className="eyebrow">Free Resources</p>
+        <p className="eyebrow">Free resources</p>
         <h1 className="text-[26px] font-bold tracking-tight leading-tight">
-          Guides and templates for shipping LLM systems
+          Guides and templates for reliable AI systems
         </h1>
         <p className="text-[15px] text-muted">
-          Everything here is free, no signup wall. Pulled from things that ran in
-          production — including the parts that had to be rewritten.
+          Use these practical checklists and templates without signing up. Each one
+          comes from production work, including the parts that needed a rewrite.
         </p>
       </header>
 
@@ -50,7 +50,7 @@ export default function ResourcesPage() {
                 <span className="pill">Coming soon</span>
               ) : (
                 <Link href={resource.url} className="btn btn-secondary btn-sm">
-                  Get it →
+                  View resource →
                 </Link>
               )}
             </div>

@@ -6,9 +6,9 @@ import { sectionFor } from "@/lib/sections";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: "AI News",
+  title: "AI news",
   description:
-    "Ranked AI news from primary labs, practitioner publications, arXiv and Hacker News.",
+    "Source-checked AI releases, research, policy changes, and incidents with practical engineering context.",
   alternates: { canonical: "/news" },
 };
 

@@ -26,6 +26,11 @@ export function isoDate(date: Date | string | null | undefined): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** The pipeline's canonical "today" — Chicago-anchored, matching the cron schedule's timezone. */
+export function todayChicago(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date());
+}
+
 export function longDate(date: Date | string | null | undefined): string {
   if (!date) return "";
   const d = typeof date === "string" ? new Date(date) : date;

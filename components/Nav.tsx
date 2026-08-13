@@ -3,9 +3,10 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 
 const LINKS = [
-  { href: "/news", label: "News" },
+  { href: "/news", label: "AI news" },
   { href: "/models", label: "Models" },
   { href: "/blog", label: "Blog" },
+  { href: "/archive", label: "Archive" },
   { href: "/about", label: "About" },
 ] as const;
 
@@ -45,7 +46,7 @@ export function Nav() {
             href="/subscribe"
             className="ml-auto inline-flex min-h-11 items-center justify-center border border-[#22c55e] bg-[#22c55e] px-4 text-[14px] font-semibold text-[#0D1B24] transition-colors duration-150 hover:bg-white md:ml-2"
           >
-            Join the field notes
+            Subscribe
           </Link>
         </div>
 

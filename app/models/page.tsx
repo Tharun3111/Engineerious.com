@@ -6,9 +6,9 @@ import { sectionFor } from "@/lib/sections";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: "AI Models",
+  title: "Model updates",
   description:
-    "New and trending model releases from the Hugging Face Hub and the frontier labs.",
+    "Compare new AI models by capability, access, cost, constraints, and the tests worth running before adoption.",
   alternates: { canonical: "/models" },
 };
 

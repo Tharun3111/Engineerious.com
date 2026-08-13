@@ -1,7 +1,10 @@
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { beehiivConfigured, subscribe } from "@/lib/beehiiv";
+import { subscribers } from "@/db/schema";
+import { getDb } from "@/lib/db";
+import { resendConfigured, sendWelcomeEmail, upsertContact } from "@/lib/resend";
 
 export const runtime = "nodejs";
 
@@ -10,30 +13,61 @@ const bodySchema = z.object({ email: z.email() });
 export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: "A valid email is required." }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "Enter a valid email address." }, { status: 400 });
   }
 
-  if (!beehiivConfigured()) {
+  if (!resendConfigured()) {
     return NextResponse.json(
-      {
-        ok: false,
-        error:
-          "Newsletter is not connected yet. Set BEEHIIV_API_KEY and BEEHIIV_PUBLICATION_ID.",
-      },
+      { ok: false, error: "Newsletter signup isn't available right now. Try again later." },
       { status: 503 },
     );
   }
 
+  const email = parsed.data.email;
+
+  // Postgres is the source of truth: write it first so a Resend outage never loses a
+  // signup. `onConflictDoNothing` makes re-submitting an already-subscribed email a
+  // harmless no-op rather than a duplicate-key error. `.returning()` tells us whether a
+  // row was actually inserted, which gates the welcome email below — without it, a
+  // resubmission of an already-subscribed address would re-trigger the welcome send.
+  let isNewSubscriber: boolean;
   try {
-    await subscribe(parsed.data.email, request.headers.get("referer") ?? undefined);
-    return NextResponse.json({ ok: true });
+    const inserted = await getDb()
+      .insert(subscribers)
+      .values({ email })
+      .onConflictDoNothing({ target: subscribers.email })
+      .returning({ id: subscribers.id });
+    isNewSubscriber = inserted.length > 0;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("[subscribe]", message);
-    // Do not leak the upstream body to the browser — it can contain the publication id.
+    console.error("[subscribe]", error);
     return NextResponse.json(
-      { ok: false, error: "Could not subscribe right now. Try again shortly." },
+      { ok: false, error: "We couldn't subscribe this email. Try again in a few minutes." },
       { status: 502 },
     );
   }
+
+  // Best-effort: the subscriber is already durably recorded above even if this fails.
+  try {
+    const contactId = await upsertContact(email);
+    await getDb()
+      .update(subscribers)
+      .set({ resendContactId: contactId })
+      .where(eq(subscribers.email, email));
+  } catch (error) {
+    console.error("[subscribe] Resend contact upsert failed (subscriber row still saved):", error);
+  }
+
+  // Best-effort, same reasoning — the subscriber is already saved regardless. This is
+  // the ONLY signal a new subscriber gets that anything happened; without it they see
+  // a form that appears to do nothing. Gated on isNewSubscriber so resubmitting an
+  // already-subscribed email doesn't re-send the welcome message every time.
+  if (isNewSubscriber) {
+    try {
+      await sendWelcomeEmail(email);
+    } catch (error) {
+      console.error("[subscribe] welcome email failed (subscriber row still saved):", error);
+    }
+  }
+
+  return NextResponse.json({ ok: true });
 }

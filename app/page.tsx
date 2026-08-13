@@ -2,39 +2,40 @@ import Link from "next/link";
 
 import { NewsletterCTA } from "@/components/NewsletterCTA";
 import { getPublishedPosts } from "@/lib/content/blog";
-import { isoDate } from "@/lib/time";
+import { getNotableStockMoves } from "@/lib/stocks";
+import { isoDate, todayChicago } from "@/lib/time";
 
 export const revalidate = 300;
 
 const DESK_LANES = [
   {
-    code: "SIGNAL / 01",
-    title: "AI News",
+    code: "NEWS / 01",
+    title: "AI news",
     prompt: "Track what changed",
     detail:
       "Source-checked releases, research, incidents, and policy shifts with the engineering impact attached.",
     href: "/news",
-    action: "Open the news desk",
+    action: "Read AI news",
     accent: "bg-[#0A5FA5]",
   },
   {
-    code: "MODEL / 02",
-    title: "Model Watch",
+    code: "MODELS / 02",
+    title: "Models",
     prompt: "Compare before switching",
     detail:
       "Model updates translated into capability, access, constraints, and the tests worth running before adoption.",
     href: "/models",
-    action: "Inspect model updates",
+    action: "Compare models",
     accent: "bg-[#22C55E]",
   },
   {
-    code: "FIELD / 03",
-    title: "Field Notes",
+    code: "BLOG / 03",
+    title: "Blog",
     prompt: "Learn from the system",
     detail:
       "Longer explanations of evals, agents, retrieval, and the production details that a clean demo leaves out.",
     href: "/blog",
-    action: "Read the field notes",
+    action: "Read the blog",
     accent: "bg-[#F59E0B]",
   },
 ] as const;
@@ -72,11 +73,11 @@ function ProofLoop() {
           <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-white/45">
             Publishing method
           </p>
-          <p className="mt-1 text-[15px] font-semibold text-white">The Proof Loop</p>
+          <p className="mt-1 text-[15px] font-semibold text-white">The proof loop</p>
         </div>
         <span className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-white/55">
           <span className="status-pulse" aria-hidden />
-          Human gate active
+          Human review required
         </span>
       </div>
 
@@ -87,7 +88,7 @@ function ProofLoop() {
           role="img"
           aria-labelledby="proof-loop-title proof-loop-description"
         >
-          <title id="proof-loop-title">Engineerious Proof Loop</title>
+          <title id="proof-loop-title">Engineerious proof loop</title>
           <desc id="proof-loop-description">
             Evidence moves through observe, test, and decide before reaching a human publishing checkpoint.
           </desc>
@@ -141,40 +142,103 @@ function ProofLoop() {
   );
 }
 
-export default function HomePage() {
-  const posts = getPublishedPosts().slice(0, 3);
+/**
+ * Always populated, even before a post clears review today — the homepage should
+ * never look stale just because /admin hasn't been visited yet. Latest published
+ * post (any date) + today's already-persisted notable stock moves (see
+ * getNotableStockMoves) — not a live re-fetch, and never a source of unreviewed
+ * content: stock quotes are real market numbers, not LLM synthesis.
+ */
+function TodayModule({
+  latestPost,
+  moves,
+  date,
+}: {
+  latestPost: Awaited<ReturnType<typeof getPublishedPosts>>[number] | null;
+  moves: Awaited<ReturnType<typeof getNotableStockMoves>>;
+  date: string;
+}) {
+  const hasContent = latestPost !== null || moves.length > 0;
+
+  return (
+    <section
+      aria-label="Today"
+      data-feed-state={hasContent ? "ok" : "empty"}
+      className="border-b border-rule bg-surface"
+    >
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-8 gap-y-3 px-4 py-4 sm:px-6 lg:px-8">
+        <span className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+          <span className="status-pulse" aria-hidden />
+          Today · {date}
+        </span>
+
+        {latestPost ? (
+          <Link href={`/blog/${latestPost.slug}`} className="text-[14px] font-semibold hover:text-accent-strong">
+            {latestPost.title}
+          </Link>
+        ) : (
+          <span className="text-[14px] text-muted">No post published yet today.</span>
+        )}
+
+        {moves.length > 0 && (
+          <ul className="ml-auto flex flex-wrap items-center gap-3 font-mono text-[12.5px]">
+            {moves.slice(0, 6).map((m) => {
+              const up = (m.percentChange ?? 0) >= 0;
+              return (
+                <li key={m.ticker} className={up ? "text-[#1a7f37]" : "text-[#c92a2a]"}>
+                  {m.ticker} {up ? "+" : ""}
+                  {m.percentChange!.toFixed(1)}%
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
+export default async function HomePage() {
+  const date = todayChicago();
+  const [allPosts, moves] = await Promise.all([getPublishedPosts(), getNotableStockMoves(date)]);
+  const posts = allPosts.slice(0, 3);
 
   return (
     <div className="pb-6">
+      <TodayModule latestPost={posts[0] ?? null} moves={moves} date={date} />
+
       <section className="home-hero-grid relative isolate overflow-hidden border-x border-b border-rule">
         <div className="grid min-h-[calc(100svh-4.5rem)] lg:grid-cols-[minmax(0,1.05fr)_minmax(24rem,0.75fr)]">
           <div className="flex flex-col justify-center px-5 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 xl:px-16">
             <p className="flex items-center gap-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-strong">
               <span aria-hidden className="h-px w-8 bg-accent-strong" />
-              Independent AI engineering desk
+              Daily / Source-checked
             </p>
             <h1 className="mt-7 max-w-4xl text-balance text-[52px] font-bold leading-[0.94] tracking-[-0.055em] text-fg sm:text-[70px] lg:text-[76px] xl:text-[88px]">
-              AI releases are not <span className="font-display font-medium italic text-accent-strong">engineering decisions.</span>
+              AI news, model analysis, and production guides —{" "}
+              <span className="font-display font-medium italic text-accent-strong">
+                reviewed by a human, every day.
+              </span>
             </h1>
             <p className="mt-7 max-w-2xl text-pretty text-[18px] leading-8 text-muted sm:text-[20px]">
-              Engineerious traces what changed in models and tools, then turns it into tests,
-              limits, and implementation choices you can inspect.
+              Decide what to test, adopt, or ignore with source-checked AI news,
+              model analysis, and lessons from production systems.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
               <Link href="/news" className="btn btn-primary px-5">
-                Open the news desk
+                Read AI news
                 <span aria-hidden>↗</span>
               </Link>
               <Link href="/models" className="btn btn-secondary px-5">
-                Inspect model updates
+                Compare models
               </Link>
             </div>
             <div className="mt-10 grid max-w-2xl gap-3 border-t border-rule pt-5 text-[13px] leading-5 text-muted sm:grid-cols-2">
               <p>
-                <span className="font-semibold text-fg">For:</span> engineers and technical founders responsible for systems that must work beyond the demo.
+                <span className="font-semibold text-fg">For:</span> engineers and technical founders building AI systems that must work beyond the demo.
               </p>
               <p>
-                <span className="font-semibold text-fg">By:</span> Tharun Chowdary, with AI assistance and review status kept visible.
+                <span className="font-semibold text-fg">By:</span> Tharun Chowdary. Sources, test status, and AI assistance stay visible.
               </p>
             </div>
           </div>
@@ -190,11 +254,11 @@ export default function HomePage() {
           <div>
             <p className="section-label text-accent-strong">The desk</p>
             <h2 id="desk-heading" className="mt-3 max-w-3xl text-balance text-[40px] font-bold leading-[1.02] tracking-[-0.04em] sm:text-[56px]">
-              Choose the evidence you need.
+              Start with the decision you need to make.
             </h2>
           </div>
           <p className="max-w-xl text-[17px] leading-7 text-muted lg:pb-1">
-            Each route answers a different question. News tells you what moved. Models tell you what to compare. Field notes show how the system behaves.
+            AI news explains what changed. Model updates show what to compare. The engineering blog explains what works in production.
           </p>
         </div>
 
@@ -227,13 +291,13 @@ export default function HomePage() {
         <section aria-labelledby="writing-heading" className="pb-20 sm:pb-24">
           <div className="flex flex-wrap items-end justify-between gap-5 border-b-2 border-fg pb-5">
             <div>
-              <p className="section-label text-accent-strong">Verified writing</p>
+              <p className="section-label text-accent-strong">Engineering blog</p>
               <h2 id="writing-heading" className="mt-2 text-[38px] font-bold leading-tight tracking-[-0.03em]">
-                Latest field notes
+                Latest engineering guides
               </h2>
             </div>
             <Link href="/blog" className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4">
-              Read all field notes
+              Read all engineering guides
             </Link>
           </div>
           <ul>
@@ -266,7 +330,7 @@ export default function HomePage() {
               The questions behind the next issue.
             </h2>
             <p className="mt-5 text-[17px] leading-7 text-muted">
-              These are active investigations, not polished conclusions. The first verified notes are under review.
+              These are active investigations, not polished conclusions. Finished analysis moves to the engineering blog after review.
             </p>
             <Link href="/about" className="mt-8 inline-flex min-h-11 items-center text-[14px] font-semibold text-accent-strong underline underline-offset-4">
               See the publishing standard
@@ -315,7 +379,7 @@ export default function HomePage() {
         <div className="bg-[#E4F0F6] p-6 sm:p-9">
           <NewsletterCTA
             heading="Stay close to the work"
-            blurb="Get a field note when a useful, verified conclusion is ready. No automated link dump and no volume promise."
+            blurb="Get source-checked AI engineering analysis when there is useful work to share. No automated link dumps."
           />
         </div>
       </section>

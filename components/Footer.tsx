@@ -13,8 +13,8 @@ export function Footer() {
             <Logo className="h-auto w-[200px]" />
           </Link>
           <p className="mt-4 max-w-sm text-[15px] leading-6 text-white/65">
-            Practical notes for engineers and technical founders building AI systems
-            that need to work beyond the demo.
+            Source-checked AI news, model analysis, and production guides for engineers
+            and technical founders.
           </p>
         </div>
 
@@ -23,9 +23,10 @@ export function Footer() {
             Explore
           </p>
           <ul className="mt-3 space-y-1 text-[15px] text-white/70">
-            <li><Link href="/news" className="inline-flex min-h-11 items-center hover:text-white">AI News</Link></li>
+            <li><Link href="/news" className="inline-flex min-h-11 items-center hover:text-white">AI news</Link></li>
             <li><Link href="/models" className="inline-flex min-h-11 items-center hover:text-white">Models</Link></li>
             <li><Link href="/blog" className="inline-flex min-h-11 items-center hover:text-white">Blog</Link></li>
+            <li><Link href="/archive" className="inline-flex min-h-11 items-center hover:text-white">Archive</Link></li>
             <li><Link href="/about" className="inline-flex min-h-11 items-center hover:text-white">About Tharun</Link></li>
             <li><Link href="/subscribe" className="inline-flex min-h-11 items-center hover:text-white">Newsletter</Link></li>
           </ul>
@@ -47,8 +48,13 @@ export function Footer() {
       </div>
 
       <div className="border-t border-white/15">
-        <div className="mx-auto max-w-7xl px-4 py-5 text-[13px] text-white/45 sm:px-6 lg:px-8">
-          © {new Date().getFullYear()} Engineerious. Sources, limits, and corrections stay visible.
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-5 text-[13px] text-white/45 sm:px-6 lg:px-8">
+          <p>© {new Date().getFullYear()} Engineerious. Sources, limits, and corrections stay visible.</p>
+          <nav className="flex flex-wrap gap-x-5 gap-y-1">
+            <Link href="/editorial-standards" className="hover:text-white/80">Editorial standards</Link>
+            <Link href="/corrections" className="hover:text-white/80">Corrections</Link>
+            <Link href="/ethics" className="hover:text-white/80">Ethics</Link>
+          </nav>
         </div>
       </div>
     </footer>

@@ -31,7 +31,7 @@ export default async function PillarPage({ params }: { params: Promise<{ pillar:
   const pillar = getPillar(slug);
   if (!pillar) notFound();
 
-  const posts = getPostsByPillar(pillar.slug);
+  const posts = await getPostsByPillar(pillar.slug);
 
   return (
     <div className="space-y-8 py-8">
@@ -45,9 +45,12 @@ export default async function PillarPage({ params }: { params: Promise<{ pillar:
       <section>
         <h2 className="section-label">Posts</h2>
         {posts.length === 0 ? (
-          <p className="mt-2 card p-5 text-[13.5px] text-muted">
-            Nothing published under this pillar yet.
-          </p>
+          <div className="mt-2 card p-5 text-[13.5px] text-muted">
+            <p>No articles in this topic yet.</p>
+            <Link href="/blog" className="mt-3 inline-flex font-semibold text-fg underline underline-offset-4">
+              Browse all engineering guides
+            </Link>
+          </div>
         ) : (
           <ul className="mt-3 grid gap-4 sm:grid-cols-2">
             {posts.map((post) => (

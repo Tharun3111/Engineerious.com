@@ -46,7 +46,7 @@ export function Row({ item, rank }: { item: Item; rank?: number }) {
         {item.aiNote && (
           <p className="mt-1 text-[13.5px] text-muted">
             <span className="mr-1 font-mono text-[11px] uppercase tracking-wide text-accent-strong">
-              AI note
+              AI-generated context
             </span>
             {item.aiNote}
           </p>
@@ -68,13 +68,13 @@ export function Row({ item, rank }: { item: Item; rank?: number }) {
           )}
           <span aria-hidden>·</span>
           <Link href={`${section.path}/${item.id}`} className="hover:text-fg">
-            details
+            View details
           </Link>
           {discussion && (
             <>
               <span aria-hidden>·</span>
               <a href={discussion} target="_blank" rel="noopener noreferrer" className="hover:text-fg">
-                discuss
+                Join discussion
               </a>
             </>
           )}

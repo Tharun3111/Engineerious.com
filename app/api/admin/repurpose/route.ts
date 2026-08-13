@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { repurposeJobs } from "@/db/schema";
 import { getDb } from "@/lib/db";
-import { isCopyReadyPlatform } from "@/lib/repurpose/launch-policy";
+import { LAUNCH_PLATFORMS, isCopyReadyPlatform } from "@/lib/repurpose/launch-policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,11 +58,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, status: "rejected" });
   }
 
-  // approve → freeze human-reviewed copy for manual LinkedIn publication
+  // approve → freeze human-reviewed copy for manual publication
   const text = draft ?? job.draft;
   if (!isCopyReadyPlatform(job.platform)) {
     return NextResponse.json(
-      { error: "Only LinkedIn copy is enabled for the launch." },
+      { error: `Only ${LAUNCH_PLATFORMS.join(" and ")} copy is enabled for the launch.` },
       { status: 409 },
     );
   }
@@ -82,6 +82,6 @@ export async function POST(request: Request) {
     ok: true,
     status: "approved",
     copyReady: true,
-    next: "Copy the approved draft into LinkedIn manually.",
+    next: `Copy the approved draft into ${job.platform} manually.`,
   });
 }

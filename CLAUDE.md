@@ -106,7 +106,7 @@ on a topic.
 
 ### Repurposing — human approval is the only path to a network
 
-`lib/repurpose/launch-policy.ts` currently restricts repurposing to LinkedIn only
+`lib/repurpose/launch-policy.ts` currently restricts repurposing to LinkedIn and Instagram
 (`LAUNCH_PLATFORMS`); `resolveLaunchPlatforms` throws on any other platform. One flagship post fans
 out to a draft via `lib/repurpose/`, using per-platform prompt templates in `content/prompts/*.md`
 in the "Pragmatic Practitioner" voice defined in `lib/llm.ts`. Every draft lands `pending_review`.

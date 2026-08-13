@@ -338,6 +338,18 @@ a {
   text-decoration-thickness: 1px;
 }
 
+/*
+ * Mid-paragraph bold is the scroll-stopping mechanism for daily posts — a scanning
+ * reader's eye should catch the load-bearing number or claim without reading the
+ * whole sentence. Plain font-weight:bold doesn't do that; needs real contrast.
+ */
+.prose strong {
+  color: var(--accent-strong);
+  font-weight: 700;
+  background: linear-gradient(to bottom, transparent 70%, var(--accent-tint) 70%);
+  padding: 0 0.05em;
+}
+
 .prose ul,
 .prose ol {
   padding-left: 1.4em;
@@ -405,6 +417,24 @@ a {
 .prose hr {
   border: 0;
   border-top: 1px solid var(--rule);
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  border: 1px solid var(--rule);
+}
+
+.prose figure {
+  margin: 0;
+}
+
+.prose figcaption {
+  margin-top: 0.5rem;
+  font-size: 0.85em;
+  color: var(--muted);
+  text-align: center;
 }
 
 @media (prefers-reduced-motion: reduce) {

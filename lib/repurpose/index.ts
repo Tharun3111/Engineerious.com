@@ -50,7 +50,6 @@ export async function generateDraft(post: BlogPost, platform: Platform): Promise
     system: PRAGMATIC_PRACTITIONER,
     prompt,
     maxTokens: 2000,
-    temperature: 0.6,
   });
 }
 

@@ -9,9 +9,9 @@ import { PILLARS } from "@/lib/pillars";
 import { isoDate } from "@/lib/time";
 
 export const metadata: Metadata = {
-  title: "Blog",
+  title: "Engineering blog",
   description:
-    "Long-form writing on eval-first AI engineering, MCP in production, and production RAG & MLOps.",
+    "Practical guides on AI evaluation, agents, retrieval, model infrastructure, and production reliability.",
   alternates: { canonical: "/blog" },
 };
 
@@ -19,19 +19,19 @@ export const metadata: Metadata = {
  * The one place on the site that gets a little warmth — title, dek, pillar, read
  * time. Everything else is a row.
  */
-export default function BlogIndexPage() {
-  const posts = getPublishedPosts();
+export default async function BlogIndexPage() {
+  const posts = await getPublishedPosts();
 
   return (
     <div className="space-y-8 py-12 sm:py-16">
       <header className="grid gap-5 border-b border-fg pb-8 lg:grid-cols-[18rem_1fr] lg:gap-10">
-        <p className="eyebrow">Field notes / 03</p>
+        <p className="eyebrow">Engineering blog / 03</p>
         <div className="max-w-3xl">
           <h1 className="font-display text-balance text-[42px] font-semibold leading-[1.03] tracking-[-0.035em] sm:text-[56px]">
-            Deep dives from building and testing AI systems.
+            Practical guides for building reliable AI systems.
           </h1>
           <p className="mt-5 max-w-2xl text-[17px] leading-7 text-muted sm:text-[18px]">
-            Original essays on evaluation, agents, retrieval, and production failures—written when there is enough evidence to teach something useful.
+            Learn from tested approaches, production failures, and open questions across evaluation, agents, retrieval, and model infrastructure.
           </p>
         </div>
       </header>
@@ -48,7 +48,7 @@ export default function BlogIndexPage() {
         <div data-feed-state="empty" className="grid gap-3 border-y border-rule py-8 sm:grid-cols-[10rem_1fr]">
           <p className="section-label">Editorial status</p>
           <p className="max-w-2xl text-[16px] leading-7 text-muted">
-            The first original field notes are under review. Drafts stay private until their claims, sources, and authorship are verified.
+            No engineering guides are published yet. Drafts stay private until their claims, sources, and authorship have been reviewed. Subscribe below to get the first one.
           </p>
         </div>
       ) : (

@@ -1,7 +1,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 
-import { items, repurposeJobs, submissions, type Item, type ItemType } from "@/db/schema";
+import { digests, items, repurposeJobs, submissions, type Item, type ItemType } from "@/db/schema";
 import { getDb } from "@/lib/db";
 
 export type FeedSort = "hot" | "new";
@@ -133,6 +133,20 @@ export async function getRepurposeQueue(limit = 100) {
     return { jobs: rows, error: null };
   } catch (error) {
     return { jobs: [], error: describe(error) };
+  }
+}
+
+export async function getPendingDigests(limit = 30) {
+  try {
+    const rows = await getDb()
+      .select()
+      .from(digests)
+      .where(eq(digests.status, "pending_review"))
+      .orderBy(desc(digests.date))
+      .limit(limit);
+    return { digests: rows, error: null };
+  } catch (error) {
+    return { digests: [], error: describe(error) };
   }
 }
 

@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { FeedSort } from "@/lib/queries";
 
 const PUBLIC_SECTIONS = [
-  { label: "News", path: "/news" },
+  { label: "AI news", path: "/news" },
   { label: "Models", path: "/models" },
   { label: "Blog", path: "/blog" },
 ] as const;
@@ -56,7 +56,7 @@ export function SectionTabs({
                   : "inline-flex min-h-11 items-center border-b-2 border-transparent px-2 text-muted hover:text-fg"
               }
             >
-              {option}
+              {option === "hot" ? "Top" : "Newest"}
             </Link>
           ))}
         </div>

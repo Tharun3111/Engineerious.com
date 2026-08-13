@@ -16,13 +16,25 @@ const baseUrl = (process.env.BASE_URL ?? "http://localhost:3000").replace(/\/$/,
 /** `feed: true` asserts the page rendered populated rows, not an empty/error state. */
 const ROUTES = [
   { path: "/", newsletter: true },
-  { path: "/news", feed: true, contains: "AI news, filtered for builders." },
-  { path: "/models", feed: true, contains: "Model releases, translated into engineering impact." },
-  { path: "/blog", feed: true, contains: "Deep dives from building and testing AI systems." },
-  { path: "/open-source", expect: 404 },
-  { path: "/resources", expect: 404 },
-  { path: "/pillars/eval-first", expect: 404 },
-  { path: "/submit", expect: 404 },
+  { path: "/news", feed: true, contains: "AI news for engineering decisions." },
+  { path: "/models", feed: true, contains: "Model updates compared for real-world use." },
+  { path: "/blog", feed: true, contains: "Practical guides for building reliable AI systems." },
+  // Gated by PUBLIC_RESEARCH_ENABLED (middleware.ts + lib/public-launch.ts). This
+  // list assumes the flag is "true" (the current default — see docs/launch-runbook.md).
+  // Set QA_GATE_CLOSED=true when checking a deployment with the flag off.
+  ...(process.env.QA_GATE_CLOSED === "true"
+    ? [
+        { path: "/open-source", expect: 404 },
+        { path: "/resources", expect: 404 },
+        { path: "/pillars/eval-first", expect: 404 },
+        { path: "/submit", expect: 404 },
+      ]
+    : [
+        { path: "/open-source", contains: "Open-source releases worth evaluating." },
+        { path: "/resources", contains: "Guides and templates for reliable AI systems" },
+        { path: "/pillars/eval-first" },
+        { path: "/submit", contains: "Suggest a link for review" },
+      ]),
   { path: "/about", newsletter: true },
   { path: "/subscribe", newsletter: true },
   { path: "/rss.xml", contains: "<rss" },

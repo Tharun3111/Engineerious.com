@@ -26,14 +26,20 @@ export function SubmitForm() {
         body: JSON.stringify(data),
       });
       const body = (await res.json()) as { ok?: boolean; error?: string };
-      if (!res.ok || !body.ok) throw new Error(body.error ?? "Submission failed.");
+      if (!res.ok || !body.ok) {
+        throw new Error(body.error ?? "We couldn't submit this link. Try again in a few minutes.");
+      }
 
       setStatus("ok");
-      setMessage("Submitted. It goes into the moderation queue — thanks.");
+      setMessage("Link submitted for review. Thanks for the tip.");
       form.reset();
     } catch (error) {
       setStatus("error");
-      setMessage(error instanceof Error ? error.message : "Submission failed.");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "We couldn't submit this link. Try again in a few minutes.",
+      );
     }
   }
 
@@ -45,14 +51,14 @@ export function SubmitForm() {
         <label htmlFor="submit-url" className={label}>
           URL
         </label>
-        <input id="submit-url" name="url" type="url" required placeholder="https://" className="field mt-1.5" />
+        <input id="submit-url" name="url" type="url" required placeholder="https://example.com/ai-release" className="field mt-1.5" />
       </div>
 
       <div>
         <label htmlFor="submit-title" className={label}>
           Title
         </label>
-        <input id="submit-title" name="title" type="text" required maxLength={200} className="field mt-1.5" />
+        <input id="submit-title" name="title" type="text" required maxLength={200} placeholder="Acme releases Model 2" className="field mt-1.5" />
       </div>
 
       <div>
@@ -70,20 +76,20 @@ export function SubmitForm() {
 
       <div>
         <label htmlFor="submit-note" className={label}>
-          Why it matters <span className="font-normal text-muted">(optional, one line)</span>
+          Why it matters <span className="font-normal text-muted">(optional)</span>
         </label>
-        <input id="submit-note" name="note" type="text" maxLength={280} className="field mt-1.5" />
+        <input id="submit-note" name="note" type="text" maxLength={280} placeholder="Adds tool use and a longer context window" className="field mt-1.5" />
       </div>
 
       <div>
         <label htmlFor="submit-email" className={label}>
           Your email <span className="font-normal text-muted">(optional, for credit)</span>
         </label>
-        <input id="submit-email" name="submitterEmail" type="email" className="field mt-1.5" />
+        <input id="submit-email" name="submitterEmail" type="email" placeholder="you@example.com" className="field mt-1.5" />
       </div>
 
       <button type="submit" disabled={status === "submitting"} className="btn btn-primary disabled:opacity-60">
-        {status === "submitting" ? "Submitting…" : "Submit"}
+        {status === "submitting" ? "Submitting…" : "Submit link"}
       </button>
 
       {message && (
