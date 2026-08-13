@@ -26,9 +26,9 @@ export default function SubscribePage() {
 
       <div className="py-12">
         <NewsletterCTA
-        heading="Subscribe to Engineerious"
-        blurb="No daily send, automated link dump, or invented certainty. Unsubscribe in one click."
-      />
+          hideHeading
+          blurb="No daily send, automated link dump, or invented certainty. Unsubscribe in one click."
+        />
       </div>
 
       <section className="divide-y divide-rule border-y border-rule text-[16px] text-muted">

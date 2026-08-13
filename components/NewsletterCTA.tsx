@@ -12,10 +12,14 @@ export function NewsletterCTA({
   variant = "inline",
   heading = "Get practical AI engineering notes",
   blurb = "Receive source-checked analysis of models, agents, evaluation, retrieval, and production reliability. Sent only when there is useful work to share.",
+  hideHeading = false,
 }: {
   variant?: "inline" | "compact";
   heading?: string;
   blurb?: string;
+  /** Skip the eyebrow+heading pair — for pages that already have an equivalent
+   *  H1 immediately above this component, so the two don't repeat each other. */
+  hideHeading?: boolean;
 }) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
@@ -58,11 +62,23 @@ export function NewsletterCTA({
       className={compact ? "border-t border-rule pt-7" : "border-y border-rule py-10 sm:py-12"}
     >
       <div>
-        <p className="eyebrow">Newsletter</p>
-        <h2 className={compact ? "font-display mt-2 text-[27px] font-semibold leading-tight" : "font-display mt-2 text-[36px] font-semibold leading-tight"}>
-          {heading}
-        </h2>
-        <p className={compact ? "mt-2 max-w-xl text-[16px] leading-6 text-muted" : "mt-3 max-w-2xl text-[17px] leading-7 text-muted"}>
+        {!hideHeading && (
+          <>
+            <p className="eyebrow">Newsletter</p>
+            <h2 className={compact ? "font-display mt-2 text-[27px] font-semibold leading-tight" : "font-display mt-2 text-[36px] font-semibold leading-tight"}>
+              {heading}
+            </h2>
+          </>
+        )}
+        <p
+          className={
+            hideHeading
+              ? "max-w-2xl text-[17px] leading-7 text-muted"
+              : compact
+                ? "mt-2 max-w-xl text-[16px] leading-6 text-muted"
+                : "mt-3 max-w-2xl text-[17px] leading-7 text-muted"
+          }
+        >
           {blurb}
         </p>
 
