@@ -235,16 +235,6 @@ a {
   stroke-width: 28;
 }
 
-.proof-loop-active {
-  fill: none;
-  stroke: #1681c4;
-  stroke-width: 34;
-  stroke-linecap: butt;
-  stroke-dasharray: 1040;
-  stroke-dashoffset: 1040;
-  animation: proof-loop-draw 1.1s cubic-bezier(0.2, 0.75, 0.25, 1) 120ms forwards;
-}
-
 .proof-loop-stage {
   fill: #22c55e;
   font-family: var(--font-mono);
@@ -267,6 +257,13 @@ a {
   font-size: 27px;
   font-weight: 650;
   letter-spacing: -0.02em;
+}
+
+.proof-loop-subword {
+  fill: rgb(255 255 255 / 0.55);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 500;
 }
 
 .status-pulse {
@@ -297,12 +294,6 @@ a {
 
 .desk-lane:hover .desk-lane-arrow {
   transform: translateX(5px);
-}
-
-@keyframes proof-loop-draw {
-  to {
-    stroke-dashoffset: 170;
-  }
 }
 
 /* Long-form article body — /blog/[slug] and /about opt into this. */

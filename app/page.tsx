@@ -76,7 +76,7 @@ function ProofLoop() {
           <p className="mt-1 text-[15px] font-semibold text-white">The proof loop</p>
         </div>
         <span className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-white/55">
-          <span className="status-pulse" aria-hidden />
+          <span aria-hidden className="h-2 w-2 rounded-full bg-checkpoint" />
           Human review required
         </span>
       </div>
@@ -93,8 +93,6 @@ function ProofLoop() {
             Evidence moves through observe, test, and decide before reaching a human publishing checkpoint.
           </desc>
           <circle cx="260" cy="260" r="179" className="proof-loop-track" />
-          <path d="M292 84A179 179 0 1 0 438 226" className="proof-loop-active" />
-          <rect x="374" y="102" width="50" height="50" rx="2" fill="#22C55E" />
 
           <g className="proof-loop-stage">
             <circle cx="139" cy="129" r="5" />
@@ -112,14 +110,11 @@ function ProofLoop() {
           <text x="260" y="224" textAnchor="middle" className="proof-loop-kicker">
             EVIDENCE BEFORE ADOPTION
           </text>
-          <text x="260" y="263" textAnchor="middle" className="proof-loop-word">
-            Source
+          <text x="260" y="278" textAnchor="middle" className="proof-loop-word">
+            Source-checked
           </text>
-          <text x="260" y="296" textAnchor="middle" className="proof-loop-word">
-            Status
-          </text>
-          <text x="260" y="329" textAnchor="middle" className="proof-loop-word">
-            Unknowns
+          <text x="260" y="311" textAnchor="middle" className="proof-loop-subword">
+            before publish
           </text>
         </svg>
       </div>
