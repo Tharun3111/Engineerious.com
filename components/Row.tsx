@@ -15,9 +15,9 @@ const TYPE_STYLE: Record<Item["type"], string> = {
 const PRIMARY_SOURCE_THRESHOLD = 4;
 
 /**
- * The card primitive. Every public feed on the site — home, and all three sections
- * — is a list of these. (The admin moderation queue has its own row markup: it
- * needs inline approve/reject actions this component doesn't support.)
+ * The card primitive for the three section feeds (/news, /models, /open-source),
+ * via SectionPage -> FeedList. Not used on home (its own lane cards) or in
+ * /admin (needs inline approve/reject actions this component doesn't support).
  */
 export function Row({
   item,
@@ -82,7 +82,7 @@ export function Row({
           <p className="mt-1 line-clamp-2 text-[13.5px] text-muted">{item.summary}</p>
         )}
 
-        <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11.5px] text-muted">
+        <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[12px] text-muted">
           <span>{item.source}</span>
           <span aria-hidden>·</span>
           <span>{timeAgo(item.publishedAt ?? item.firstSeen)}</span>

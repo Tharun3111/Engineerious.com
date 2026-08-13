@@ -51,9 +51,9 @@ export function Footer() {
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-5 text-[13px] text-white/45 sm:px-6 lg:px-8">
           <p>© {new Date().getFullYear()} Engineerious. Sources, limits, and corrections stay visible.</p>
           <nav className="flex flex-wrap gap-x-5 gap-y-1">
-            <Link href="/editorial-standards" className="hover:text-white/80">Editorial standards</Link>
-            <Link href="/corrections" className="hover:text-white/80">Corrections</Link>
-            <Link href="/ethics" className="hover:text-white/80">Ethics</Link>
+            <Link href="/editorial-standards" className="inline-flex min-h-11 items-center hover:text-white/80">Editorial standards</Link>
+            <Link href="/corrections" className="inline-flex min-h-11 items-center hover:text-white/80">Corrections</Link>
+            <Link href="/ethics" className="inline-flex min-h-11 items-center hover:text-white/80">Ethics</Link>
           </nav>
         </div>
       </div>

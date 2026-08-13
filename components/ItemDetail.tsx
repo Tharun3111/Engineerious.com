@@ -42,7 +42,7 @@ export async function ItemDetail({ id, expectedType }: { id: string; expectedTyp
       <div>
         <span className="pill">{section.label}</span>
         <h1 className="mt-2 text-[24px] font-bold leading-snug tracking-tight">{item.title}</h1>
-        <p className="mt-1.5 font-mono text-[12.5px] text-muted">
+        <p className="mt-1.5 font-mono text-[12px] text-muted">
           {item.source}
           {item.author ? ` · ${item.author}` : ""} ·{" "}
           {timeAgo(item.publishedAt ?? item.firstSeen)}
