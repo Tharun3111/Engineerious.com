@@ -55,8 +55,8 @@ export function Row({
         <div className="flex flex-wrap items-center gap-2">
           <span className={TYPE_STYLE[item.type]}>{section.label}</span>
           {isPrimarySource && (
-            <span className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold uppercase tracking-wide text-checkpoint">
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-checkpoint" />
+            <span className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold uppercase tracking-wide text-positive">
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-positive" />
               Primary source
             </span>
           )}

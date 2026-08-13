@@ -9,7 +9,7 @@ export function StockStrip({ quotes }: { quotes?: { ticker: string; percentChang
         {withMoves.map((q) => {
           const up = (q.percentChange ?? 0) >= 0;
           return (
-            <li key={q.ticker} className={up ? "text-[#1a7f37]" : "text-[#c92a2a]"}>
+            <li key={q.ticker} className={up ? "text-positive" : "text-negative"}>
               {q.ticker} {up ? "+" : ""}
               {q.percentChange!.toFixed(1)}%
             </li>

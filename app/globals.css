@@ -14,6 +14,11 @@
   --accent-tint: #dceef8;
   --accent-fg: #ffffff;
   --checkpoint: #22c55e;
+  /* Distinct from --checkpoint: that's a decorative fill/dot color (2.3:1 on
+   * white, fine for small non-text UI). Readable green/red text needs real
+   * contrast — these two are the values already proven at 5:1+ on white. */
+  --positive: #1a7f37;
+  --negative: #c92a2a;
   --ring: #0a5fa5;
 }
 
@@ -30,6 +35,8 @@
   --color-accent-tint: var(--accent-tint);
   --color-accent-fg: var(--accent-fg);
   --color-checkpoint: var(--checkpoint);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
   --color-ring: var(--ring);
 
   --font-sans: "IBM Plex Sans Variable", sans-serif;

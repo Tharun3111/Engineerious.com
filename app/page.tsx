@@ -176,17 +176,22 @@ function TodayModule({
         )}
 
         {moves.length > 0 && (
-          <ul className="ml-auto flex flex-wrap items-center gap-3 font-mono text-[12.5px]">
-            {moves.slice(0, 6).map((m) => {
-              const up = (m.percentChange ?? 0) >= 0;
-              return (
-                <li key={m.ticker} className={up ? "text-[#1a7f37]" : "text-[#c92a2a]"}>
-                  {m.ticker} {up ? "+" : ""}
-                  {m.percentChange!.toFixed(1)}%
-                </li>
-              );
-            })}
-          </ul>
+          <div className="ml-auto flex flex-wrap items-center gap-3">
+            <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+              Notable moves today
+            </span>
+            <ul className="flex flex-wrap items-center gap-3 font-mono text-[12.5px]">
+              {moves.slice(0, 6).map((m) => {
+                const up = (m.percentChange ?? 0) >= 0;
+                return (
+                  <li key={m.ticker} className={up ? "text-positive" : "text-negative"}>
+                    {m.ticker} {up ? "+" : ""}
+                    {m.percentChange!.toFixed(1)}%
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         )}
       </div>
     </section>
