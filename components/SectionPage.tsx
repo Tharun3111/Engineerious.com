@@ -55,6 +55,7 @@ export async function SectionPage({
         error={error}
         startRank={offset + 1}
         emptyMessage={section.emptyMessage}
+        highlightRank={sort === "hot"}
       />
 
       {!error && (page > 1 || items.length === PAGE_SIZE) && (

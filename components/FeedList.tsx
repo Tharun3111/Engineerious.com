@@ -8,6 +8,8 @@ type FeedListProps = {
   /** Continues the rank numbering across pages. */
   startRank?: number;
   emptyMessage?: string;
+  /** Forwarded to Row — only pass when items are actually score-sorted. */
+  highlightRank?: boolean;
 };
 
 /**
@@ -20,6 +22,7 @@ export function FeedList({
   error = null,
   startRank = 1,
   emptyMessage = "No reviewed updates yet. New items appear here after editorial review.",
+  highlightRank = false,
 }: FeedListProps) {
   if (error) {
     return (
@@ -42,7 +45,7 @@ export function FeedList({
   return (
     <ol data-feed-state="ok" data-feed-count={items.length} className="space-y-2.5">
       {items.map((item, index) => (
-        <Row key={item.id} item={item} rank={startRank + index} />
+        <Row key={item.id} item={item} rank={startRank + index} highlightRank={highlightRank} />
       ))}
     </ol>
   );
