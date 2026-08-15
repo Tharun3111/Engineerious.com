@@ -1,8 +1,9 @@
 import { desc } from "drizzle-orm";
 
-import { digests as digestsTable } from "@/db/schema";
+import { digests as digestsTable, type Item } from "@/db/schema";
 import { getDb } from "@/lib/db";
 import { getAllDbPosts, getPublishedPosts, isVisible, type BlogPost } from "@/lib/content/blog";
+import { getActiveDates, getItemsForDate } from "@/lib/queries";
 
 export type ArchiveDay = { date: string; posts: BlogPost[] };
 
@@ -71,8 +72,26 @@ export function isValidArchiveDate(date: string): boolean {
   return DATE_FORMAT.test(date);
 }
 
-export async function getArchiveDay(date: string): Promise<BlogPost[] | null> {
+/**
+ * Every Chicago calendar date with anything to show on the archive calendar —
+ * union of ingested-item dates (getActiveDates) and blog/digest dates. The union
+ * matters because a hand-written MDX post can carry a date with no corresponding
+ * ingested items, and vice versa in the pipeline's early days.
+ */
+export async function getAllActiveArchiveDates(): Promise<Set<string>> {
+  const [itemDates, index] = await Promise.all([getActiveDates(), getArchiveIndex()]);
+  const dates = new Set(itemDates);
+  for (const { date } of index) dates.add(date);
+  return dates;
+}
+
+export type ArchiveDayDetail = { date: string; posts: BlogPost[]; items: Item[] };
+
+export async function getArchiveDay(date: string): Promise<ArchiveDayDetail | null> {
   if (!isValidArchiveDate(date)) return null;
-  const index = await getArchiveIndex();
-  return index.find((d) => d.date === date)?.posts ?? null;
+  const [index, itemsResult] = await Promise.all([getArchiveIndex(), getItemsForDate(date)]);
+  const posts = index.find((d) => d.date === date)?.posts ?? [];
+  const dayItems = itemsResult.items;
+  if (posts.length === 0 && dayItems.length === 0) return null;
+  return { date, posts, items: dayItems };
 }

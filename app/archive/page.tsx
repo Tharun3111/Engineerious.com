@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
+import { ArchiveCalendar } from "@/components/ArchiveCalendar";
 import { NewsletterCTA } from "@/components/NewsletterCTA";
-import { getArchiveIndex } from "@/lib/content/archive";
-import { longDate } from "@/lib/time";
+import { getAllActiveArchiveDates } from "@/lib/content/archive";
+import { todayChicago } from "@/lib/time";
 
 export const metadata: Metadata = {
   title: "Archive",
@@ -11,8 +11,19 @@ export const metadata: Metadata = {
   alternates: { canonical: "/archive" },
 };
 
-export default async function ArchivePage() {
-  const days = await getArchiveIndex();
+const MONTH_FORMAT = /^\d{4}-\d{2}$/;
+
+export default async function ArchivePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
+  const params = await searchParams;
+  const today = todayChicago();
+  const month = params.month && MONTH_FORMAT.test(params.month) ? params.month : today.slice(0, 7);
+
+  const activeDates = await getAllActiveArchiveDates();
+  const hasAnyContent = activeDates.size > 0;
 
   return (
     <div className="space-y-8 py-12 sm:py-16">
@@ -23,12 +34,12 @@ export default async function ArchivePage() {
             Every day, in order.
           </h1>
           <p className="mt-5 max-w-2xl text-[17px] leading-7 text-muted sm:text-[18px]">
-            Pick a date and see exactly what published that day.
+            Pick a date and see exactly what published that day — news, model updates, open-source releases, and the blog post.
           </p>
         </div>
       </header>
 
-      {days.length === 0 ? (
+      {!hasAnyContent ? (
         <div data-feed-state="empty" className="grid gap-3 border-y border-rule py-8 sm:grid-cols-[10rem_1fr]">
           <p className="section-label">Archive status</p>
           <p className="max-w-2xl text-[16px] leading-7 text-muted">
@@ -36,24 +47,9 @@ export default async function ArchivePage() {
           </p>
         </div>
       ) : (
-        <ul data-feed-state="ok" data-feed-count={days.length} className="divide-y divide-rule border-y border-rule">
-          {days.map(({ date, posts }) => (
-            <li key={date} className="grid gap-2 py-4 sm:grid-cols-[10rem_1fr]">
-              <Link href={`/archive/${date}`} className="font-mono text-[13px] text-muted hover:text-accent-strong">
-                {longDate(new Date(`${date}T00:00:00Z`))}
-              </Link>
-              <ul className="space-y-1">
-                {posts.map((post) => (
-                  <li key={post.slug}>
-                    <Link href={`/blog/${post.slug}`} className="text-[15px] font-semibold hover:text-accent-strong">
-                      {post.title}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </li>
-          ))}
-        </ul>
+        <div data-feed-state="ok">
+          <ArchiveCalendar month={month} activeDates={activeDates} todayDate={today} />
+        </div>
       )}
 
       <NewsletterCTA />

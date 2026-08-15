@@ -26,9 +26,18 @@ export function isoDate(date: Date | string | null | undefined): string {
   return d.toISOString().slice(0, 10);
 }
 
+const CHICAGO_DATE_FORMATTER = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" });
+
+/** Chicago-anchored calendar date for any instant — the single source of truth
+ *  for "which day does this belong to" across DST boundaries. todayChicago() and
+ *  the archive calendar both go through this so they can never disagree. */
+export function toChicagoDate(date: Date): string {
+  return CHICAGO_DATE_FORMATTER.format(date);
+}
+
 /** The pipeline's canonical "today" — Chicago-anchored, matching the cron schedule's timezone. */
 export function todayChicago(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date());
+  return toChicagoDate(new Date());
 }
 
 export function longDate(date: Date | string | null | undefined): string {
