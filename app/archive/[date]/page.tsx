@@ -101,7 +101,9 @@ export default async function ArchiveDayPage({ params }: { params: Promise<{ dat
                 View all {section.label.toLowerCase()} →
               </Link>
             </div>
-            <FeedList items={sectionItems} />
+            {/* Already grouped under a per-type heading above — the pill would
+             *  repeat it on every row. */}
+            <FeedList items={sectionItems} showType={false} />
           </section>
         );
       })}

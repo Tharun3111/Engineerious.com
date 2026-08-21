@@ -79,10 +79,29 @@ export function isValidArchiveDate(date: string): boolean {
  * ingested items, and vice versa in the pipeline's early days.
  */
 export async function getAllActiveArchiveDates(): Promise<Set<string>> {
+  const { activeDates } = await getArchiveCalendarData();
+  return activeDates;
+}
+
+/**
+ * Both sets the calendar needs, from one pass over the same two queries
+ * getAllActiveArchiveDates already ran. `postDates` is the subset that has a
+ * published blog post, so a cell can say "there's writing here" rather than
+ * only "this day is clickable" — the calendar's one piece of information
+ * scent, and free because getArchiveIndex() was already being awaited.
+ */
+export async function getArchiveCalendarData(): Promise<{
+  activeDates: Set<string>;
+  postDates: Set<string>;
+}> {
   const [itemDates, index] = await Promise.all([getActiveDates(), getArchiveIndex()]);
-  const dates = new Set(itemDates);
-  for (const { date } of index) dates.add(date);
-  return dates;
+  const activeDates = new Set(itemDates);
+  const postDates = new Set<string>();
+  for (const { date, posts } of index) {
+    activeDates.add(date);
+    if (posts.length > 0) postDates.add(date);
+  }
+  return { activeDates, postDates };
 }
 
 export type ArchiveDayDetail = { date: string; posts: BlogPost[]; items: Item[] };

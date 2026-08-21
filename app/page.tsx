@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { NewsletterCTA } from "@/components/NewsletterCTA";
 import { getPublishedPosts } from "@/lib/content/blog";
+import { getPillar } from "@/lib/pillars";
 import { getNotableStockMoves } from "@/lib/stocks";
 import { isoDate, todayChicago } from "@/lib/time";
 
@@ -16,7 +17,7 @@ const DESK_LANES = [
       "Source-checked releases, research, incidents, and policy shifts with the engineering impact attached.",
     href: "/news",
     action: "Read AI news",
-    accent: "bg-[#0A5FA5]",
+    accent: "bg-cat-news",
   },
   {
     code: "MODELS / 02",
@@ -26,7 +27,7 @@ const DESK_LANES = [
       "Model updates translated into capability, access, constraints, and the tests worth running before adoption.",
     href: "/models",
     action: "Compare models",
-    accent: "bg-[#22C55E]",
+    accent: "bg-cat-models",
   },
   {
     code: "BLOG / 03",
@@ -36,7 +37,7 @@ const DESK_LANES = [
       "Longer explanations of evals, agents, retrieval, and the production details that a clean demo leaves out.",
     href: "/blog",
     action: "Read the blog",
-    accent: "bg-[#F59E0B]",
+    accent: "bg-cat-blog",
   },
 ] as const;
 
@@ -227,7 +228,6 @@ export default async function HomePage() {
             <div className="mt-9 flex flex-wrap gap-3">
               <Link href="/news" className="btn btn-primary px-5">
                 Read AI news
-                <span aria-hidden>↗</span>
               </Link>
               <Link href="/models" className="btn btn-secondary px-5">
                 Compare models
@@ -243,7 +243,7 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <div className="flex items-center border-t border-rule bg-[#DCEAF2] p-4 sm:p-8 lg:border-l lg:border-t-0 lg:p-7 xl:p-10">
+          <div className="flex items-center border-t border-rule bg-accent-tint p-4 sm:p-8 lg:border-l lg:border-t-0 lg:p-7 xl:p-10">
             <ProofLoop />
           </div>
         </div>
@@ -301,23 +301,34 @@ export default async function HomePage() {
             </Link>
           </div>
           <ul>
-            {posts.map((post) => (
-              <li key={post.slug} className="border-b border-rule">
-                <Link
-                  href={`/blog/${post.slug}`}
-                  className="grid gap-3 py-8 transition-colors duration-150 hover:bg-surface sm:grid-cols-[10rem_1fr_auto] sm:items-start sm:px-4"
-                >
-                  <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
-                    {post.pillar.replaceAll("-", " ")}
-                  </span>
-                  <span>
-                    <span className="block text-[28px] font-bold leading-tight tracking-[-0.02em]">{post.title}</span>
+            {posts.map((post) => {
+              // Pipeline posts store pillar as free text and write "none" when the
+              // drafter couldn't classify one; `pillar` is only cast to PillarSlug
+              // in lib/content/blog.ts, never validated. Resolving through
+              // getPillar() is what stops that literal reaching the page as a
+              // "NONE" badge — and lets the label column collapse when absent
+              // instead of holding a 10rem gutter open for nothing.
+              const pillar = getPillar(post.pillar);
+              return (
+                <li key={post.slug} className="border-b border-rule">
+                  <Link
+                    href={`/blog/${post.slug}`}
+                    className="block py-8 transition-colors duration-150 hover:bg-surface sm:px-4"
+                  >
+                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
+                      {pillar && <span className="font-semibold text-accent-strong">{pillar.name}</span>}
+                      <span>{isoDate(post.date)}</span>
+                      <span aria-hidden>·</span>
+                      <span>{post.readingMinutes} min read</span>
+                    </span>
+                    <h3 className="mt-2.5 max-w-3xl text-balance text-[28px] font-bold leading-tight tracking-[-0.02em]">
+                      {post.title}
+                    </h3>
                     <span className="mt-2 block max-w-2xl text-[16px] leading-7 text-muted">{post.dek}</span>
-                  </span>
-                  <span className="font-mono text-[11px] text-muted">{isoDate(post.date)} · {post.readingMinutes} min</span>
-                </Link>
-              </li>
-            ))}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
@@ -376,7 +387,7 @@ export default async function HomePage() {
           </Link>
         </div>
 
-        <div className="bg-[#E4F0F6] p-6 sm:p-9">
+        <div className="bg-surface-2 p-6 sm:p-9">
           <NewsletterCTA
             heading="Stay close to the work"
             blurb="Get source-checked AI engineering analysis when there is useful work to share. No automated link dumps."

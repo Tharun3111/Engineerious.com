@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { ArchiveCalendar } from "@/components/ArchiveCalendar";
 import { NewsletterCTA } from "@/components/NewsletterCTA";
-import { getAllActiveArchiveDates } from "@/lib/content/archive";
+import { getArchiveCalendarData } from "@/lib/content/archive";
 import { todayChicago } from "@/lib/time";
 
 export const metadata: Metadata = {
@@ -22,7 +22,7 @@ export default async function ArchivePage({
   const today = todayChicago();
   const month = params.month && MONTH_FORMAT.test(params.month) ? params.month : today.slice(0, 7);
 
-  const activeDates = await getAllActiveArchiveDates();
+  const { activeDates, postDates } = await getArchiveCalendarData();
   const hasAnyContent = activeDates.size > 0;
 
   return (
@@ -48,7 +48,7 @@ export default async function ArchivePage({
         </div>
       ) : (
         <div data-feed-state="ok">
-          <ArchiveCalendar month={month} activeDates={activeDates} todayDate={today} />
+          <ArchiveCalendar month={month} activeDates={activeDates} postDates={postDates} todayDate={today} />
         </div>
       )}
 

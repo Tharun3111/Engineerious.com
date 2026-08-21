@@ -20,6 +20,14 @@
   --positive: #1a7f37;
   --negative: #c92a2a;
   --ring: #0a5fa5;
+  /* Section identity. One hue per content type, used everywhere that type is
+   * named (home desk lanes, section eyebrows, feed pills) so the colour means
+   * "this is Models" rather than "lane two". All three clear 4.5:1 as text on
+   * --surface, unlike the raw #F59E0B amber they replace (1.9:1) — a decorative
+   * hex that could never be promoted to a label without failing contrast. */
+  --cat-news: #0a5fa5;
+  --cat-models: #1a7f37;
+  --cat-blog: #9b4507;
 }
 
 @theme inline {
@@ -38,44 +46,54 @@
   --color-positive: var(--positive);
   --color-negative: var(--negative);
   --color-ring: var(--ring);
+  --color-cat-news: var(--cat-news);
+  --color-cat-models: var(--cat-models);
+  --color-cat-blog: var(--cat-blog);
 
   --font-sans: "IBM Plex Sans Variable", sans-serif;
   --font-display: "Newsreader Variable", Georgia, serif;
   --font-mono: "SFMono-Regular", "Cascadia Code", "Roboto Mono", monospace;
 }
 
-html {
-  color-scheme: light;
-  scroll-behavior: smooth;
-}
+/*
+ * These are element defaults, so they belong in @layer base. Unlayered CSS
+ * outranks every cascade layer, and `a { color: inherit }` sitting outside a
+ * layer silently beat all of Tailwind's `text-*` utilities (which live in
+ * @layer utilities) on every anchor on the site: `text-accent-strong` links
+ * rendered navy, footer `text-muted` links rendered white, and the nav CTA's
+ * declared colour never applied at all. Layering restores the normal order —
+ * a bare <a> still inherits, a classed one wins.
+ */
+@layer base {
+  html {
+    color-scheme: light;
+    scroll-behavior: smooth;
+  }
 
-body {
-  background: var(--bg);
-  color: var(--fg);
-  font-family: var(--font-sans);
-  font-size: 17px;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
 
-a {
-  color: inherit;
-}
+  a {
+    color: inherit;
+  }
 
-.prose a:visited {
-  color: #614b75;
-}
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
 
-:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-  border-radius: 3px;
-}
-
-::selection {
-  background: var(--accent-tint);
-  color: var(--fg);
+  ::selection {
+    background: var(--accent-tint);
+    color: var(--fg);
+  }
 }
 
 /* ---------------------------------------------------------------------- */
@@ -334,6 +352,14 @@ a {
   text-decoration: underline;
   text-underline-offset: 2px;
   text-decoration-thickness: 1px;
+}
+
+/* Must stay unlayered alongside `.prose a` above, not in @layer base with the
+ * other element defaults: unlayered CSS outranks every layer, so a layered
+ * :visited rule would lose to this unlayered `.prose a` and visited links would
+ * silently stop changing colour. Same file, same layer, specificity decides. */
+.prose a:visited {
+  color: #614b75;
 }
 
 /*

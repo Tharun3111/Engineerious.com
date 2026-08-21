@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { Logo } from "@/components/Logo";
 
@@ -10,9 +13,16 @@ const LINKS = [
   { href: "/about", label: "About" },
 ] as const;
 
+/** "/blog" is current on /blog/some-post too, but "/" must not match everything. */
+function isCurrent(pathname: string, href: string): boolean {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function Nav() {
+  const pathname = usePathname() ?? "";
+
   return (
-    <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0D1B24]/[0.98] text-white backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-white/10 bg-fg/[0.98] text-white backdrop-blur">
       <nav aria-label="Primary" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex min-h-18 items-center gap-6 py-2.5">
           <Link
@@ -30,37 +40,55 @@ export function Nav() {
           </span>
 
           <ul className="ml-auto hidden items-center gap-1 md:flex">
-            {LINKS.map((link) => (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  className="flex min-h-11 items-center px-3 text-[15px] font-medium text-white/75 transition-colors duration-150 hover:text-white"
-                >
-                  {link.label}
-                </Link>
-              </li>
-            ))}
+            {LINKS.map((link) => {
+              const current = isCurrent(pathname, link.href);
+              return (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    aria-current={current ? "page" : undefined}
+                    className={`flex min-h-11 items-center border-b-2 px-3 text-[15px] font-medium transition-colors duration-150 focus-visible:outline-white ${
+                      current
+                        ? "border-white text-white"
+                        : "border-transparent text-white/75 hover:text-white"
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
 
+          {/* White-on-navy, not the old #22c55e: green is nowhere in the Proof
+           * Loop palette, and on the navy bar a brand-blue fill would sit at
+           * ~2.5:1 against the header itself. White is the only fill that reads
+           * as the one primary action from across the page. */}
           <Link
             href="/subscribe"
-            className="ml-auto inline-flex min-h-11 items-center justify-center border border-[#22c55e] bg-[#22c55e] px-4 text-[14px] font-semibold text-[#0D1B24] transition-colors duration-150 hover:bg-white md:ml-2"
+            className="ml-auto inline-flex min-h-11 items-center justify-center bg-white px-4 text-[14px] font-semibold text-fg transition-colors duration-150 hover:bg-accent-tint focus-visible:outline-white md:ml-2"
           >
             Subscribe
           </Link>
         </div>
 
         <ul className="flex border-t border-white/15 md:hidden">
-          {LINKS.map((link) => (
-            <li key={link.href} className="flex-1">
-              <Link
-                href={link.href}
-                className="flex min-h-11 items-center justify-center px-2 text-[14px] font-medium text-white/75 hover:text-white"
-              >
-                {link.label}
-              </Link>
-            </li>
-          ))}
+          {LINKS.map((link) => {
+            const current = isCurrent(pathname, link.href);
+            return (
+              <li key={link.href} className="flex-1">
+                <Link
+                  href={link.href}
+                  aria-current={current ? "page" : undefined}
+                  className={`flex min-h-11 items-center justify-center border-b-2 px-2 text-[14px] font-medium focus-visible:outline-white ${
+                    current ? "border-white text-white" : "border-transparent text-white/75 hover:text-white"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </nav>
     </header>

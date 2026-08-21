@@ -10,6 +10,8 @@ type FeedListProps = {
   emptyMessage?: string;
   /** Forwarded to Row — only pass when items are actually score-sorted. */
   highlightRank?: boolean;
+  /** Forwarded to Row — false when every item in the list is the same type. */
+  showType?: boolean;
 };
 
 /**
@@ -23,6 +25,7 @@ export function FeedList({
   startRank = 1,
   emptyMessage = "No reviewed updates yet. New items appear here after editorial review.",
   highlightRank = false,
+  showType = true,
 }: FeedListProps) {
   if (error) {
     return (
@@ -45,7 +48,7 @@ export function FeedList({
   return (
     <ol data-feed-state="ok" data-feed-count={items.length} className="space-y-2.5">
       {items.map((item, index) => (
-        <Row key={item.id} item={item} rank={startRank + index} highlightRank={highlightRank} />
+        <Row key={item.id} item={item} rank={startRank + index} highlightRank={highlightRank} showType={showType} />
       ))}
     </ol>
   );

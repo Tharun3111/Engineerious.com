@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { NewsletterCTA } from "@/components/NewsletterCTA";
-import { SocialLinks } from "@/components/SocialLinks";
 import { env } from "@/lib/env";
 
 export const metadata: Metadata = {
@@ -98,7 +97,10 @@ export default function AboutPage() {
                 Contact links aren&rsquo;t available yet. Check back soon.
               </p>
             )}
-            <SocialLinks className="mt-4" />
+            {/* No SocialLinks row here: env.linkedinUrl is the only configured
+             *  network, so it rendered a second, unlabelled LinkedIn icon right
+             *  under the labelled button above it. The footer carries the icon
+             *  set site-wide. */}
         </aside>
       </div>
 

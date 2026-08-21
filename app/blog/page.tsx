@@ -54,18 +54,22 @@ export default async function BlogIndexPage() {
       ) : (
         <ul data-feed-state="ok" data-feed-count={posts.length} className="grid gap-4 sm:grid-cols-2">
           {posts.map((post) => (
-            <li key={post.slug} className="card card-hover flex flex-col p-5">
-              <div className="flex flex-wrap items-center gap-2">
+            <li key={post.slug} className="card card-hover flex h-full flex-col p-5">
+              {/* Fixed-height slot, not a collapsing div: pipeline posts store an
+               *  unrecognised pillar and PillarBadge returns null for them, which
+               *  pulled their title 24px above the titles beside them and left
+               *  every grid row visibly ragged. */}
+              <div className="flex min-h-7 flex-wrap items-center gap-2">
                 <PillarBadge slug={post.pillar} />
                 {post.draft && <span className="pill">draft</span>}
               </div>
-              <h2 className="mt-3 text-[17px] font-semibold leading-snug">
+              <h2 className="mt-2 text-balance text-[20px] font-semibold leading-snug tracking-[-0.01em]">
                 <Link href={`/blog/${post.slug}`} className="hover:text-accent-strong">
                   {post.title}
                 </Link>
               </h2>
-              <p className="mt-1.5 flex-1 text-[13.5px] text-muted">{post.dek}</p>
-              <p className="mt-3 font-mono text-[11.5px] text-muted">
+              <p className="mt-2 flex-1 text-[15px] leading-6 text-muted">{post.dek}</p>
+              <p className="mt-4 border-t border-rule pt-3 font-mono text-[11.5px] text-muted">
                 {isoDate(post.date)} · {post.readingMinutes} min read
               </p>
             </li>

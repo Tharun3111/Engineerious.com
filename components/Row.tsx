@@ -23,12 +23,17 @@ export function Row({
   item,
   rank,
   highlightRank = false,
+  showType = true,
 }: {
   item: Item;
   rank?: number;
   /** Only meaningful when the list is actually score-sorted (sort=hot) — passing
    *  this on a chronological list would badge "most recent" as "most important". */
   highlightRank?: boolean;
+  /** False on the single-type section pages (/news, /models, /open-source), where
+   *  the pill would repeat the page's own title on all 50 rows. True on mixed
+   *  lists (home, /archive/[date]) where the type is the row's only type signal. */
+  showType?: boolean;
 }) {
   const section = sectionFor(item.type);
   const host = hostname(item.url);
@@ -52,18 +57,19 @@ export function Row({
       )}
 
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={TYPE_STYLE[item.type]}>{section.label}</span>
-          {isPrimarySource && (
-            <span className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold uppercase tracking-wide text-positive">
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-positive" />
-              Primary source
-            </span>
-          )}
-          {host && <span className="font-mono text-[12px] text-muted">{host}</span>}
-        </div>
+        {(showType || isPrimarySource) && (
+          <div className="mb-1.5 flex flex-wrap items-center gap-2">
+            {showType && <span className={TYPE_STYLE[item.type]}>{section.label}</span>}
+            {isPrimarySource && (
+              <span className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold uppercase tracking-wide text-positive">
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-positive" />
+                Primary source
+              </span>
+            )}
+          </div>
+        )}
 
-        <p className="mt-1.5 text-[15.5px] font-medium leading-snug">
+        <p className="text-[17px] font-semibold leading-snug tracking-[-0.01em]">
           <a href={item.url} target="_blank" rel="noopener noreferrer nofollow" className="hover:text-accent-strong hover:underline hover:decoration-1 hover:underline-offset-2">
             {item.title}
           </a>
@@ -82,9 +88,17 @@ export function Row({
           <p className="mt-1 line-clamp-2 text-[13.5px] text-muted">{item.summary}</p>
         )}
 
+        {/* item.source is the adapter slug ("news", "models") — on a section page
+         * it repeats the pill AND the page title, so `host` is the only origin
+         * worth a line here. Publisher first: it's what decides whether the row
+         * is worth a click. */}
         <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[12px] text-muted">
-          <span>{item.source}</span>
-          <span aria-hidden>·</span>
+          {host && (
+            <>
+              <span className="text-fg/70">{host}</span>
+              <span aria-hidden>·</span>
+            </>
+          )}
           <span>{timeAgo(item.publishedAt ?? item.firstSeen)}</span>
           {item.points > 0 && (
             <>

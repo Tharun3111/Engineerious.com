@@ -28,7 +28,11 @@ export function SocialLinks({ className = "" }: { className?: string }) {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`Engineerious on ${name}`}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg"
+            /* Colour comes from the caller (the footer sets text-white), not from
+             * a hardcoded text-muted: on the navy footer that resolved to
+             * #566b78 at 3.1:1. opacity carries the resting/hover state so this
+             * works on light and dark surfaces alike. */
+            className="flex h-11 w-11 items-center justify-center rounded-full opacity-70 transition hover:bg-white/10 hover:opacity-100"
           >
             <Icon className="h-4 w-4" />
           </a>

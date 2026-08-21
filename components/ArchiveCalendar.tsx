@@ -37,11 +37,14 @@ function monthLabel(year: number, monthIndex: number): string {
 export function ArchiveCalendar({
   month,
   activeDates,
+  postDates,
   todayDate,
 }: {
   /** YYYY-MM */
   month: string;
   activeDates: Set<string>;
+  /** Subset of activeDates that has a published blog post, not just ingested items. */
+  postDates?: Set<string>;
   /** todayChicago() — used for the "today" marker and to cap forward navigation. */
   todayDate: string;
 }) {
@@ -107,13 +110,14 @@ export function ArchiveCalendar({
 
             const dayNumber = Number(date.slice(-2));
             const isActive = activeDates.has(date);
+            const hasPost = postDates?.has(date) ?? false;
             const isToday = date === todayDate;
 
             if (!isActive) {
               return (
                 <div
                   key={key}
-                  className={`flex aspect-square items-center justify-center border-b border-r border-rule p-1 font-mono text-[13px] text-muted/50 ${isToday ? "ring-1 ring-inset ring-rule-strong" : ""}`}
+                  className={`flex min-h-14 items-start justify-end border-b border-r border-rule p-2 font-mono text-[13px] text-muted/50 sm:min-h-16 ${isToday ? "ring-1 ring-inset ring-rule-strong" : ""}`}
                 >
                   {dayNumber}
                 </div>
@@ -124,14 +128,35 @@ export function ArchiveCalendar({
               <Link
                 key={key}
                 href={`/archive/${date}`}
-                className={`card-hover flex aspect-square items-center justify-center border-b border-r border-rule bg-accent-tint p-1 font-mono text-[13px] font-semibold text-accent-strong hover:bg-accent-strong hover:text-accent-fg ${isToday ? "ring-1 ring-inset ring-accent-strong" : ""}`}
+                aria-label={`${date}${hasPost ? " — includes a blog post" : ""}`}
+                className={`card-hover group flex min-h-14 flex-col items-end justify-between border-b border-r border-rule bg-accent-tint p-2 font-mono text-[13px] font-semibold text-accent-strong hover:bg-accent-strong hover:text-accent-fg sm:min-h-16 ${isToday ? "ring-1 ring-inset ring-accent-strong" : ""}`}
               >
-                {dayNumber}
+                <span>{dayNumber}</span>
+                {/* A day with a post is the reason to click; a day with only
+                 *  ingested items is browsable but not an event. The tint alone
+                 *  couldn't tell those apart. */}
+                {hasPost && (
+                  <span
+                    aria-hidden
+                    className="h-1.5 w-1.5 self-start rounded-full bg-accent-strong group-hover:bg-accent-fg"
+                  />
+                )}
               </Link>
             );
           }),
         )}
       </div>
+
+      <p className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted">
+        <span className="inline-flex items-center gap-2">
+          <span aria-hidden className="h-3 w-3 border border-rule bg-accent-tint" />
+          Published that day
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent-strong" />
+          Includes a blog post
+        </span>
+      </p>
     </div>
   );
 }

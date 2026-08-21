@@ -48,7 +48,9 @@ export function Footer() {
       </div>
 
       <div className="border-t border-white/15">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-5 text-[13px] text-white/45 sm:px-6 lg:px-8">
+        {/* /45 measured 3.9:1 on the navy footer. /65 clears 4.5:1 and still
+         *  reads as the quiet legal row under the main links at /70. */}
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-5 text-[13px] text-white/65 sm:px-6 lg:px-8">
           <p>© {new Date().getFullYear()} Engineerious. Sources, limits, and corrections stay visible.</p>
           <nav className="flex flex-wrap gap-x-5 gap-y-1">
             <Link href="/editorial-standards" className="inline-flex min-h-11 items-center hover:text-white/80">Editorial standards</Link>
