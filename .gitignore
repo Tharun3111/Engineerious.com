@@ -42,3 +42,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .gstack/
+
+# Agent skills installed via `npx skills add` — local tooling, not app source.
+.agents/
+.claude/
+skills-lock.json
