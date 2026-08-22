@@ -16,8 +16,14 @@ const baseUrl = (process.env.BASE_URL ?? "http://localhost:3000").replace(/\/$/,
 /** `feed: true` asserts the page rendered populated rows, not an empty/error state. */
 const ROUTES = [
   { path: "/", newsletter: true },
-  { path: "/news", feed: true, contains: "AI news for engineering decisions." },
-  { path: "/models", feed: true, contains: "Model updates compared for real-world use." },
+  // Closed unconditionally via CLOSED_PUBLIC_PREFIXES — not gated on
+  // PUBLIC_RESEARCH_ENABLED, so these must 404 in every environment. They served 200
+  // under promises their own first ten rows broke ("the tests worth running before
+  // you switch" above two copies of the Hub quickstart).
+  { path: "/news", expect: 404 },
+  { path: "/models", expect: 404 },
+  { path: "/news/1", expect: 404 },
+  { path: "/models/anything", expect: 404 },
   { path: "/blog", feed: true, contains: "Practical guides for building reliable AI systems." },
   // Gated by PUBLIC_RESEARCH_ENABLED (middleware.ts + lib/public-launch.ts). This
   // list assumes the flag is "true" (the current default — see docs/launch-runbook.md).

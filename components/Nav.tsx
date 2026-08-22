@@ -6,8 +6,6 @@ import { usePathname } from "next/navigation";
 import { Logo } from "@/components/Logo";
 
 const LINKS = [
-  { href: "/news", label: "AI news" },
-  { href: "/models", label: "Models" },
   { href: "/blog", label: "Blog" },
   { href: "/archive", label: "Archive" },
   { href: "/about", label: "About" },

@@ -1,13 +1,33 @@
 import { describe, expect, it } from "vitest";
 
-import { isDeferredPublicPath, shouldCloseResearchPath } from "@/lib/public-launch";
+import {
+  isClosedPublicPath,
+  isDeferredPublicPath,
+  shouldCloseResearchPath,
+} from "@/lib/public-launch";
 
 describe("public launch gate", () => {
   it("recognizes exact and nested deferred paths", () => {
-    expect(isDeferredPublicPath("/news")).toBe(false);
-    expect(isDeferredPublicPath("/models/123")).toBe(false);
+    expect(isDeferredPublicPath("/open-source")).toBe(true);
     expect(isDeferredPublicPath("/open-source/123")).toBe(true);
     expect(isDeferredPublicPath("/about")).toBe(false);
+    // Closed and deferred are separate lists — neither leaks into the other.
+    expect(isDeferredPublicPath("/news")).toBe(false);
+    expect(isDeferredPublicPath("/models/123")).toBe(false);
+  });
+
+  it("recognizes exact and nested closed paths", () => {
+    expect(isClosedPublicPath("/news")).toBe(true);
+    expect(isClosedPublicPath("/news/42")).toBe(true);
+    expect(isClosedPublicPath("/models")).toBe(true);
+    expect(isClosedPublicPath("/models/qwen")).toBe(true);
+    expect(isClosedPublicPath("/about")).toBe(false);
+    expect(isClosedPublicPath("/open-source")).toBe(false);
+  });
+
+  it("does not match a path that merely starts with a closed prefix's characters", () => {
+    expect(isClosedPublicPath("/newsletter")).toBe(false);
+    expect(isDeferredPublicPath("/submitted")).toBe(false);
   });
 
   it("closes deferred routes by default", () => {
@@ -15,8 +35,22 @@ describe("public launch gate", () => {
     expect(shouldCloseResearchPath("/about")).toBe(false);
   });
 
-  it("opens research routes only with an explicit true value", () => {
+  it("opens deferred routes only with an explicit true value", () => {
     expect(shouldCloseResearchPath("/resources", "true")).toBe(false);
     expect(shouldCloseResearchPath("/resources", "false")).toBe(true);
+  });
+
+  it("keeps closed routes shut even when the research flag is on", () => {
+    // The whole point of the second tier: PUBLIC_RESEARCH_ENABLED is "true" in
+    // production today, so a flag-gated /news would still be serving 200.
+    expect(shouldCloseResearchPath("/news", "true")).toBe(true);
+    expect(shouldCloseResearchPath("/models/qwen", "true")).toBe(true);
+  });
+
+  it("leaves the routes the site actually publishes alone", () => {
+    for (const open of ["/", "/blog", "/blog/some-post", "/about", "/archive", "/subscribe"]) {
+      expect(shouldCloseResearchPath(open, "true")).toBe(false);
+      expect(shouldCloseResearchPath(open)).toBe(false);
+    }
   });
 });

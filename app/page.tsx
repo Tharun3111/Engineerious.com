@@ -7,33 +7,40 @@ import { isoDate, todayChicago } from "@/lib/time";
 
 export const revalidate = 300;
 
+/**
+ * Both former lanes pointed at /news and /models, which are now closed
+ * (lib/public-launch.ts) — every hero and lane click used to land on a page that
+ * broke its own stated promise in its first ten rows. What is left is the beat the
+ * archive shows was already being covered: seven of the first eight posts were
+ * about agent containment failures.
+ */
 const DESK_LANES = [
   {
-    code: "NEWS / 01",
-    title: "AI news",
-    prompt: "Track what changed",
+    code: "TRACK / 01",
+    title: "Advisories",
+    prompt: "Know what's exploitable",
     detail:
-      "Source-checked releases, research, incidents, and policy shifts with the engineering impact attached.",
-    href: "/news",
-    action: "Read AI news",
+      "Containment failures, disclosed vulnerabilities, and patched versions across LangChain, CrewAI, AutoGen, and MCP — with the version you need to be on.",
+    href: "/blog",
+    action: "See what's exploitable",
     accent: "bg-cat-news",
   },
   {
-    code: "MODELS / 02",
-    title: "Models",
-    prompt: "Compare before switching",
+    code: "METHOD / 02",
+    title: "The proof loop",
+    prompt: "See how a claim clears review",
     detail:
-      "Model updates translated into capability, access, constraints, and the tests worth running before adoption.",
-    href: "/models",
-    action: "Compare models",
+      "Every post carries its origin, its sources, and whether the claims were independently tested. The schema refuses to mark anything verified without a named human reviewer.",
+    href: "/editorial-standards",
+    action: "Read the standard",
     accent: "bg-cat-models",
   },
   {
-    code: "BLOG / 03",
+    code: "WRITING / 03",
     title: "Blog",
-    prompt: "Learn from the system",
+    prompt: "Read the analysis",
     detail:
-      "Longer explanations of evals, agents, retrieval, and the production details that a clean demo leaves out.",
+      "Longer explanations of agent harnesses, evals, and the production details a clean demo leaves out.",
     href: "/blog",
     action: "Read the blog",
     accent: "bg-cat-blog",
@@ -197,35 +204,41 @@ export default async function HomePage() {
 
       <section className="home-hero-grid relative isolate overflow-hidden border-x border-b border-rule">
         <div className="grid min-h-[calc(100svh-4.5rem)] lg:grid-cols-[minmax(0,1.05fr)_minmax(24rem,0.75fr)]">
-          <div className="flex flex-col justify-center px-5 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 xl:px-16">
+          <div className="flex flex-col justify-center px-5 py-9 sm:px-10 sm:py-20 lg:px-14 lg:py-24 xl:px-16">
             <p className="flex items-center gap-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-strong">
               <span aria-hidden className="h-px w-8 bg-accent-strong" />
-              Daily / Source-checked
+              Agent security / Source-checked
             </p>
-            <h1 className="mt-7 max-w-4xl text-balance text-[52px] font-bold leading-[0.94] tracking-[-0.055em] text-fg sm:text-[70px] lg:text-[76px] xl:text-[88px]">
-              AI news, model analysis, and production guides —{" "}
+            {/* Was: "AI news, model analysis, and production guides — reviewed by a
+              * human, every day." That named the site's own departments rather than a
+              * problem, and "every day" was a cadence one reviewer could only meet with
+              * machine drafts. This states the beat the archive shows was already being
+              * covered: seven of the first eight posts were agent containment failures. */}
+            <h1 className="mt-5 max-w-4xl text-balance text-[34px] font-bold leading-[1.05] tracking-[-0.035em] text-fg sm:mt-7 sm:text-[56px] sm:tracking-[-0.045em] lg:text-[64px]">
+              Your agent framework shipped a{" "}
               <span className="font-display font-medium italic text-accent-strong">
-                reviewed by a human, every day.
+                containment bug last week.
               </span>
             </h1>
-            <p className="mt-7 max-w-2xl text-pretty text-[18px] leading-8 text-muted sm:text-[20px]">
-              Decide what to test, adopt, or ignore with source-checked AI news,
-              model analysis, and lessons from production systems.
+            <p className="mt-4 max-w-2xl text-pretty text-[16px] leading-7 text-muted sm:mt-6 sm:text-[19px] sm:leading-8">
+              I track every disclosed exploit, containment failure, and patched version
+              across LangChain, CrewAI, AutoGen, and MCP — and tell you the version you
+              need to be on. Updated when something changes, not on a schedule.
             </p>
-            <div className="mt-9 flex flex-wrap gap-3">
-              <Link href="/news" className="btn btn-primary px-5">
-                Read AI news
+            <div className="mt-6 flex flex-wrap gap-3 sm:mt-8">
+              <Link href="/blog" className="btn btn-primary px-5">
+                See what&rsquo;s exploitable now
               </Link>
-              <Link href="/models" className="btn btn-secondary px-5">
-                Compare models
+              <Link href="/subscribe" className="btn btn-secondary px-5">
+                Get the advisory by email
               </Link>
             </div>
             <div className="mt-10 grid max-w-2xl gap-3 border-t border-rule pt-5 text-[13px] leading-5 text-muted sm:grid-cols-2">
               <p>
-                <span className="font-semibold text-fg">For:</span> engineers and technical founders building AI systems that must work beyond the demo.
+                <span className="font-semibold text-fg">For:</span> engineers running agent frameworks in production, where a containment bug is an incident.
               </p>
               <p>
-                <span className="font-semibold text-fg">By:</span> Tharun Chowdary. Sources, test status, and AI assistance stay visible.
+                <span className="font-semibold text-fg">By:</span> Tharun Chowdary. Every post shows its origin, its sources, and whether the claims were tested.
               </p>
             </div>
           </div>

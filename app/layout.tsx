@@ -13,11 +13,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
   title: {
-    default: "Engineerious — practical AI engineering for real systems",
+    default: "Engineerious — agent security for engineers running AI in production",
     template: "%s · Engineerious",
   },
   description:
-    "Source-checked AI news, model analysis, and production guides for engineers and technical founders building reliable AI systems.",
+    "Disclosed exploits, containment failures, and patched versions across LangChain, CrewAI, AutoGen, and MCP — with the version you need to be on. Source-checked, by Tharun Chowdary.",
   alternates: {
     canonical: "/",
     types: { "application/rss+xml": "/rss.xml" },

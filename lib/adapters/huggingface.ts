@@ -41,13 +41,24 @@ const RECENT_SCAN_LIMIT = 500;
  * Matching is on the repo id, which is the only field guaranteed present (`full=false`
  * omits most metadata). Tags are checked too when the API returns them.
  */
+/**
+ * `\b` is wrong here and quietly fails open. Underscore is a word character, so
+ * `/\bnsfw\b/` does NOT match `ModdiAdam/Wild_Krea-2-turbo_NSFW` — the exact repo
+ * this filter exists to stop. Repo ids separate tokens with `/`, `-`, `_` and `.`,
+ * so the boundary has to be "not alphanumeric" rather than "not a word character".
+ * A unit test pins each real-world id that motivated a pattern.
+ */
+const SEP_BEFORE = "(?<![a-z0-9])";
+const SEP_AFTER = "(?![a-z0-9])";
+const bounded = (alternatives: string) => new RegExp(`${SEP_BEFORE}(?:${alternatives})${SEP_AFTER}`, "i");
+
 const BLOCKED_ID_PATTERNS: RegExp[] = [
   // Adult / safety-filter-stripped builds.
-  /\b(nsfw|porn|hentai|erotic|nudify|uncensored|abliterated|unaligned|degurgitated)\b/i,
+  bounded("nsfw|porn|hentai|erotic|nudify|uncensored|abliterated|unaligned"),
   // Hub quickstart and scratch repos.
-  /\b(myawesomemodel|test[-_]?repo|my[-_]?model|dummy|placeholder|foo[-_]?bar|untitled)\b/i,
+  bounded("myawesomemodel|test[-_]?repo|my[-_]?model|dummy|placeholder|foo[-_]?bar|untitled"),
   // Intermediate training artefacts, not releases.
-  /\b(ckpt\d+|checkpoint[-_]?\d+|seed\d{2,}|step[-_]?\d{3,}|epoch[-_]?\d+)\b/i,
+  bounded("ckpt\\d+|checkpoint[-_]?\\d+|seed\\d{2,}|step[-_]?\\d{3,}|epoch[-_]?\\d+"),
 ];
 
 const BLOCKED_TAGS = new Set(["not-for-all-audiences", "nsfw"]);

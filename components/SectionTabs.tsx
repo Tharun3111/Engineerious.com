@@ -2,11 +2,9 @@ import Link from "next/link";
 
 import type { FeedSort } from "@/lib/queries";
 
-const PUBLIC_SECTIONS = [
-  { label: "AI news", path: "/news" },
-  { label: "Models", path: "/models" },
-  { label: "Blog", path: "/blog" },
-] as const;
+/** /news and /models are closed (lib/public-launch.ts) — a tab strip of one is
+ *  just a heading, so SectionTabs renders nothing until a second surface returns. */
+const PUBLIC_SECTIONS = [{ label: "Blog", path: "/blog" }] as const;
 
 /** Tab strip + hot/new toggle. Server component — sort is a URL param, not state. */
 export function SectionTabs({
