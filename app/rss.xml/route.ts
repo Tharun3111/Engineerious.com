@@ -37,7 +37,7 @@ export async function GET() {
   <channel>
     <title>Engineerious</title>
     <link>${site}</link>
-    <description>Verified notes on practical AI engineering by Tharun Chowdary.</description>
+    <description>Notes on practical AI engineering by Tharun Chowdary. Every item carries its own provenance — origin, source status, and whether the claims were independently tested.</description>
     <language>en</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     <atom:link href="${site}/rss.xml" rel="self" type="application/rss+xml" />

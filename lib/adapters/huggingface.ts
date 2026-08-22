@@ -25,6 +25,43 @@ const API = "https://huggingface.co/api/models";
 const MIN_DOWNLOADS = 500;
 const RECENT_SCAN_LIMIT = 500;
 
+/**
+ * The Hub is an open upload host, so its firehose is not a publishable feed. Three
+ * classes of repo were reaching the live /models page under the heading "Model
+ * updates compared for real-world use", measured 2026-08-21:
+ *
+ *   NSFW / "uncensored" / "abliterated" builds — a brand-safety problem, not a
+ *     curation one. `ModdiAdam/Wild_Krea-2-turbo_NSFW` was ranking 9th, one click
+ *     from the homepage, on the site Tharun points recruiters at.
+ *   Tutorial output — `RonnyMaurer255/MyAwesomeModel-TestRepo` and
+ *     `XiAT/MyAwesomeModel-TestRepo`, two strangers' copies of the Hub quickstart.
+ *   Training checkpoints — `fpadovani/jpn-100mb-after-eng-baseline-ckpt500_seed455`
+ *     and its English twin: somebody's research run, seed number and all.
+ *
+ * Matching is on the repo id, which is the only field guaranteed present (`full=false`
+ * omits most metadata). Tags are checked too when the API returns them.
+ */
+const BLOCKED_ID_PATTERNS: RegExp[] = [
+  // Adult / safety-filter-stripped builds.
+  /\b(nsfw|porn|hentai|erotic|nudify|uncensored|abliterated|unaligned|degurgitated)\b/i,
+  // Hub quickstart and scratch repos.
+  /\b(myawesomemodel|test[-_]?repo|my[-_]?model|dummy|placeholder|foo[-_]?bar|untitled)\b/i,
+  // Intermediate training artefacts, not releases.
+  /\b(ckpt\d+|checkpoint[-_]?\d+|seed\d{2,}|step[-_]?\d{3,}|epoch[-_]?\d+)\b/i,
+];
+
+const BLOCKED_TAGS = new Set(["not-for-all-audiences", "nsfw"]);
+
+/**
+ * True when a repo should never reach a reader-facing feed. Deliberately errs toward
+ * excluding: a missed legitimate model costs one row, a surfaced NSFW model costs the
+ * credibility of every other row on the page.
+ */
+export function isPublishableModel(model: Pick<HfModel, "id" | "tags">): boolean {
+  if (BLOCKED_ID_PATTERNS.some((re) => re.test(model.id))) return false;
+  return !(model.tags ?? []).some((tag) => BLOCKED_TAGS.has(tag.toLowerCase()));
+}
+
 type HfModel = {
   id: string;
   author?: string;
@@ -99,6 +136,7 @@ export const hfRecentAdapter: IngestAdapter = {
     });
     return models
       .filter((m) => (m.downloads ?? 0) >= MIN_DOWNLOADS)
+      .filter(isPublishableModel)
       .map((m) => toRawItem(m, "huggingface-recent"));
   },
 };
@@ -111,7 +149,7 @@ export const hfPopularAdapter: IngestAdapter = {
   enabled: () => true,
   async fetch() {
     const models = await listModels({ sort: "downloads", direction: "-1", limit: "50" });
-    return models.map((m) => toRawItem(m, "huggingface-popular"));
+    return models.filter(isPublishableModel).map((m) => toRawItem(m, "huggingface-popular"));
   },
 };
 
@@ -129,7 +167,7 @@ export const hfTrendingAdapter: IngestAdapter = {
   async fetch() {
     try {
       const models = await listModels({ sort: "trendingScore", direction: "-1", limit: "50" });
-      return models.map((m) => toRawItem(m, "huggingface-trending"));
+      return models.filter(isPublishableModel).map((m) => toRawItem(m, "huggingface-trending"));
     } catch (error) {
       console.warn("[huggingface-trending] undocumented sort failed, skipping:", error);
       return [];

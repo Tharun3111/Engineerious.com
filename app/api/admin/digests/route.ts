@@ -78,6 +78,23 @@ export async function POST(request: Request) {
 
   const now = new Date();
 
+  // The post's canonical date is the digest's EDITORIAL date, not the moment a human
+  // happened to click approve.
+  //
+  // This was `now`, to avoid falling back to the pre-review WRITE-stage insert
+  // timestamp. But `now` collapses a reviewed backlog: approving four pending digests
+  // in one sitting stamped all four with the same instant, so /blog rendered four
+  // posts dated 2026-08-21 about one incident while /archive — which groups by
+  // digests.date — correctly showed them spread across 08-16 to 08-21. The same post
+  // carried two different dates depending on the page, RSS emitted four items nine
+  // seconds apart with slugs backdated across six days, and sitemap lastmod followed
+  // the approval click. It made a roughly-daily cadence look like a content mill.
+  //
+  // digests.date is Chicago-anchored (uniqueIndex, one row per day) and is what the
+  // content is *about*, so it is the honest value. Noon UTC keeps the rendered
+  // calendar day stable on both sides of the Chicago offset.
+  const editorialDate = new Date(`${claimed.date}T12:00:00Z`);
+
   const [publishedPost] = await db
     .update(posts)
     .set({
@@ -85,11 +102,7 @@ export async function POST(request: Request) {
       authenticityStatus: "verified",
       reviewedBy: REVIEWER_NAME,
       reviewedAt: now,
-      // lib/content/blog.ts reads `publishedAt ?? createdAt` as the post's canonical
-      // date — everywhere that date is used (byline, JSON-LD, sitemap lastmod, RSS)
-      // was silently falling back to the pre-review WRITE-stage insert timestamp
-      // without this, understating how old "published" content actually is.
-      publishedAt: now,
+      publishedAt: editorialDate,
       updatedAt: now,
     })
     .where(eq(posts.slug, claimed.blogPostSlug))

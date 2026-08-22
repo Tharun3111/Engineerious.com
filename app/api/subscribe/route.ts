@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { subscribers } from "@/db/schema";
 import { getDb } from "@/lib/db";
-import { resendConfigured, sendWelcomeEmail, upsertContact } from "@/lib/resend";
+import { sendWelcomeEmail, upsertContact } from "@/lib/resend";
 
 export const runtime = "nodejs";
 
@@ -16,15 +16,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Enter a valid email address." }, { status: 400 });
   }
 
-  if (!resendConfigured()) {
-    return NextResponse.json(
-      { ok: false, error: "Newsletter signup isn't available right now. Try again later." },
-      { status: 503 },
-    );
-  }
-
   const email = parsed.data.email;
 
+  // There used to be a `resendConfigured()` guard here that 503'd before this insert.
+  // It contradicted the very next comment: an unset RESEND_* var meant the address was
+  // rejected AND never stored, so every signup during a config gap was lost with no
+  // record anywhere. Both Resend calls below already fail safe (upsertContact throws
+  // into a catch, sendWelcomeEmail no-ops), so capture is now unconditional and the
+  // email delivery is what degrades.
+  //
   // Postgres is the source of truth: write it first so a Resend outage never loses a
   // signup. `onConflictDoNothing` makes re-submitting an already-subscribed email a
   // harmless no-op rather than a duplicate-key error. `.returning()` tells us whether a

@@ -3,7 +3,6 @@ import Link from "next/link";
 import { NewsletterCTA } from "@/components/NewsletterCTA";
 import { getPublishedPosts } from "@/lib/content/blog";
 import { getPillar } from "@/lib/pillars";
-import { getNotableStockMoves } from "@/lib/stocks";
 import { isoDate, todayChicago } from "@/lib/time";
 
 export const revalidate = 300;
@@ -140,21 +139,27 @@ function ProofLoop() {
 
 /**
  * Always populated, even before a post clears review today — the homepage should
- * never look stale just because /admin hasn't been visited yet. Latest published
- * post (any date) + today's already-persisted notable stock moves (see
- * getNotableStockMoves) — not a live re-fetch, and never a source of unreviewed
- * content: stock quotes are real market numbers, not LLM synthesis.
+ * never look stale just because /admin hasn't been visited yet.
+ *
+ * The "Notable moves today" ticker (MU +4.0%, AMZN -2.2%) used to sit on the right of
+ * this bar. It came out because on a 375px viewport it was, measurably, the most
+ * concrete information a first-time visitor received: the fold held the nav, a
+ * headline fragment, and two equity quotes, with both hero CTAs below it. An AI
+ * engineer's first impression of the site was a stock ticker, which reads as a
+ * finance content farm to the exact audience this is for.
+ *
+ * StockStrip stays on post pages, where lib/stocks.ts joins a quote to a ticker the
+ * post actually names via posts.relevantTickers and cross-checks two providers. There
+ * the number supports a claim; here it supported nothing.
  */
 function TodayModule({
   latestPost,
-  moves,
   date,
 }: {
   latestPost: Awaited<ReturnType<typeof getPublishedPosts>>[number] | null;
-  moves: Awaited<ReturnType<typeof getNotableStockMoves>>;
   date: string;
 }) {
-  const hasContent = latestPost !== null || moves.length > 0;
+  const hasContent = latestPost !== null;
 
   return (
     <section
@@ -176,24 +181,6 @@ function TodayModule({
           <span className="text-[14px] text-muted">No post published yet today.</span>
         )}
 
-        {moves.length > 0 && (
-          <div className="ml-auto flex flex-wrap items-center gap-3">
-            <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-              Notable moves today
-            </span>
-            <ul className="flex flex-wrap items-center gap-3 font-mono text-[12.5px]">
-              {moves.slice(0, 6).map((m) => {
-                const up = (m.percentChange ?? 0) >= 0;
-                return (
-                  <li key={m.ticker} className={up ? "text-positive" : "text-negative"}>
-                    {m.ticker} {up ? "+" : ""}
-                    {m.percentChange!.toFixed(1)}%
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
       </div>
     </section>
   );
@@ -201,12 +188,12 @@ function TodayModule({
 
 export default async function HomePage() {
   const date = todayChicago();
-  const [allPosts, moves] = await Promise.all([getPublishedPosts(), getNotableStockMoves(date)]);
+  const allPosts = await getPublishedPosts();
   const posts = allPosts.slice(0, 3);
 
   return (
     <div className="pb-6">
-      <TodayModule latestPost={posts[0] ?? null} moves={moves} date={date} />
+      <TodayModule latestPost={posts[0] ?? null} date={date} />
 
       <section className="home-hero-grid relative isolate overflow-hidden border-x border-b border-rule">
         <div className="grid min-h-[calc(100svh-4.5rem)] lg:grid-cols-[minmax(0,1.05fr)_minmax(24rem,0.75fr)]">

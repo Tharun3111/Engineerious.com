@@ -6,7 +6,12 @@ import matter from "gray-matter";
 
 import { posts as postsTable, type DiagramSpec } from "@/db/schema";
 import { getDb } from "@/lib/db";
-import { parseFrontmatter, type Frontmatter } from "@/lib/content/frontmatter";
+import {
+  assertNoFabricatedExperience,
+  findFabricatedExperienceClaims,
+  parseFrontmatter,
+  type Frontmatter,
+} from "@/lib/content/frontmatter";
 import type { PillarSlug } from "@/lib/pillars";
 
 /**
@@ -65,6 +70,27 @@ function loadMdx(file: string): BlogPost {
   const raw = readFileSync(join(CONTENT_DIR, file), "utf8");
   const { data, content } = matter(raw);
   const parsed = parseFrontmatter(data, `content/blog/${file}`);
+  const source = `content/blog/${file}`;
+
+  // Body-aware half of the provenance contract: the schema checks who *signed* a
+  // post, this checks that a machine draft isn't claiming work nobody did.
+  //
+  // Severity is deliberately split. A fabricated claim sitting in a draft is a
+  // problem to fix, not a reason to take the whole site down — three such drafts
+  // exist today and hard-failing on them would break every build until someone
+  // rewrites them. But the moment one is marked for publication it becomes the
+  // exact failure this apparatus exists to prevent, so that path throws.
+  if (parsed.draft) {
+    const claims = findFabricatedExperienceClaims(parsed, content);
+    if (claims.length > 0) {
+      console.warn(
+        `[blog] ${source} (draft) is origin: ai_generated and claims first-hand work — ` +
+          `${claims.join("; ")}. This cannot be published until it is rewritten or reauthored.`,
+      );
+    }
+  } else {
+    assertNoFabricatedExperience(parsed, content, source);
+  }
 
   return { ...parsed, slug, body: content, readingMinutes: readingMinutes(content), source: "mdx" };
 }
