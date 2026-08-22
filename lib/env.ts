@@ -59,6 +59,7 @@ export const env = {
   twitterUrl: process.env.NEXT_PUBLIC_TWITTER_URL,
   instagramUrl: process.env.NEXT_PUBLIC_INSTAGRAM_URL,
   linkedinUrl: process.env.NEXT_PUBLIC_LINKEDIN_URL,
+  githubUrl: process.env.NEXT_PUBLIC_GITHUB_URL,
 
   /**
    * When true, newly ingested items land as `pending` and only appear in the feeds

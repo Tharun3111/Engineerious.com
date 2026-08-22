@@ -81,6 +81,16 @@ export default function AboutPage() {
                   Email Tharun
                 </a>
               )}
+              {env.githubUrl && (
+                <a
+                  href={env.githubUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-secondary btn-sm"
+                >
+                  Source on GitHub ↗
+                </a>
+              )}
               {env.linkedinUrl && (
                 <a
                   href={env.linkedinUrl}
@@ -92,7 +102,15 @@ export default function AboutPage() {
                 </a>
               )}
             </div>
-            {!env.contactEmail && !env.linkedinUrl && (
+            {env.githubUrl && (
+              <p className="mt-4 text-[15px] leading-6 text-muted">
+                The site runs the pipeline it describes: agents draft, a schema refuses to
+                mark anything verified without a named human reviewer and a timestamp, and
+                only I can publish. It is all in the repo, including the parts that did not
+                work.
+              </p>
+            )}
+            {!env.contactEmail && !env.linkedinUrl && !env.githubUrl && (
               <p className="mt-4 text-[15px] leading-6 text-muted">
                 Contact links aren&rsquo;t available yet. Check back soon.
               </p>
