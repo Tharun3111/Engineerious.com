@@ -59,7 +59,7 @@ export function NewsletterCTA({
   return (
     <section
       data-testid="newsletter-cta"
-      className={compact ? "border-t border-rule pt-7" : "border-y border-rule py-10 sm:py-12"}
+      className={compact ? "" : "border-y border-rule py-10 sm:py-12"}
     >
       <div>
         {!hideHeading && (

@@ -3,10 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Logo } from "@/components/Logo";
-
 const LINKS = [
-  { href: "/blog", label: "Blog" },
+  { href: "/blog", label: "The log" },
   { href: "/archive", label: "Archive" },
   { href: "/about", label: "About" },
 ] as const;
@@ -16,28 +14,33 @@ function isCurrent(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+/**
+ * A masthead, not a nav bar.
+ *
+ * This was a black sticky bar carrying the logo lockup, a mono tagline, five links
+ * and a filled CTA — a SaaS header, and the most template-looking object on the
+ * site. It also fought the page: an ink slab sitting above content that has no
+ * other dark element anywhere.
+ *
+ * Now the wordmark is set in the display serif on the same paper as everything
+ * else, closed by a 2px ink rule. The chrome and the content are made of the same
+ * material, which is the whole point of the concept.
+ */
 export function Nav() {
   const pathname = usePathname() ?? "";
 
   return (
-    <header className="sticky top-0 z-20 border-b border-white/10 bg-fg/[0.98] text-white backdrop-blur">
+    <header className="border-b-2 border-fg bg-bg">
       <nav aria-label="Primary" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex min-h-18 items-center gap-6 py-2.5">
-          <Link
-            href="/"
-            className="shrink-0 focus-visible:outline-white"
-            aria-label="Engineerious home"
-          >
-            <Logo priority className="h-auto w-[148px] sm:w-[184px]" />
+        <div className="flex flex-wrap items-baseline gap-x-7 gap-y-3 py-5">
+          <Link href="/" className="shrink-0" aria-label="Engineerious home">
+            <span className="font-display text-[21px] font-semibold tracking-[-0.025em] text-fg sm:text-[26px] lg:text-[28px]">
+              Engineerious{" "}
+              <span className="font-normal italic text-muted">/ Reproduction Log</span>
+            </span>
           </Link>
 
-          <span className="hidden border-l border-white/15 pl-5 font-mono text-[10px] uppercase leading-4 tracking-[0.14em] text-white/45 lg:block">
-            Independent AI
-            <br />
-            engineering desk
-          </span>
-
-          <ul className="ml-auto hidden items-center gap-1 md:flex">
+          <ul className="flex items-baseline gap-x-6">
             {LINKS.map((link) => {
               const current = isCurrent(pathname, link.href);
               return (
@@ -45,10 +48,10 @@ export function Nav() {
                   <Link
                     href={link.href}
                     aria-current={current ? "page" : undefined}
-                    className={`flex min-h-11 items-center border-b-2 px-3 text-[15px] font-medium transition-colors duration-150 focus-visible:outline-white ${
+                    className={`inline-flex min-h-11 items-center text-[13.5px] transition-colors duration-150 ${
                       current
-                        ? "border-white text-white"
-                        : "border-transparent text-white/75 hover:text-white"
+                        ? "font-semibold text-fg underline decoration-1 underline-offset-[6px]"
+                        : "text-muted hover:text-fg"
                     }`}
                   >
                     {link.label}
@@ -58,36 +61,19 @@ export function Nav() {
             })}
           </ul>
 
-          {/* White on the ink bar. The CTA was a saturated green before, which
-           * belonged to no palette this site has ever had. Red is unavailable by
-           * rule — it means "unpatched" and nothing else — so white is the only
-           * fill that reads as the one primary action. */}
+          <p className="ml-auto hidden text-right font-sans text-[10.5px] uppercase leading-[1.5] tracking-[0.13em] text-muted lg:block">
+            Agent containment failures
+            <br />
+            Tracked by one engineer
+          </p>
+
           <Link
             href="/subscribe"
-            className="ml-auto inline-flex min-h-11 items-center justify-center bg-white px-4 text-[14px] font-semibold text-fg transition-colors duration-150 hover:bg-accent-tint focus-visible:outline-white md:ml-2"
+            className="inline-flex min-h-11 items-center text-[13.5px] font-semibold text-fg underline decoration-1 underline-offset-[6px] hover:decoration-2"
           >
             Subscribe
           </Link>
         </div>
-
-        <ul className="flex border-t border-white/15 md:hidden">
-          {LINKS.map((link) => {
-            const current = isCurrent(pathname, link.href);
-            return (
-              <li key={link.href} className="flex-1">
-                <Link
-                  href={link.href}
-                  aria-current={current ? "page" : undefined}
-                  className={`flex min-h-11 items-center justify-center border-b-2 px-2 text-[14px] font-medium focus-visible:outline-white ${
-                    current ? "border-white text-white" : "border-transparent text-white/75 hover:text-white"
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
       </nav>
     </header>
   );
