@@ -3,7 +3,7 @@ export function StockStrip({ quotes }: { quotes?: { ticker: string; percentChang
   if (withMoves.length === 0) return null;
 
   return (
-    <div className="max-w-[68ch] border border-rule px-5 py-4">
+    <div className="measure border border-rule px-5 py-4">
       <p className="section-label">Market context</p>
       <ul className="mt-2.5 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[13.5px]">
         {withMoves.map((q) => {

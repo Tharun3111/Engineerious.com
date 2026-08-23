@@ -104,13 +104,18 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   const { newer, older } = await getAdjacentPosts(slug);
   const stockQuotes = await getStockStripQuotes(slug, post.relevantTickers ?? []);
 
+  // One column system for the whole record, so no block is left dangling at its
+  // own width. The shell is 860px centred; prose, TL;DR and Key facts sit at 68ch
+  // centred inside it; figures and diagrams may take the full 860. Before this the
+  // header and prose were centred while the tags, share block, newsletter and
+  // prev/next still spanned the full 1280px shell.
   return (
-    <article className="space-y-7 py-8">
+    <article className="mx-auto max-w-[860px] space-y-7 py-8">
       <JsonLd data={blogPostingJsonLd(post)} />
       {/* The record: plate first, then the strip. Everything is centred on the
           reading measure — the old header pinned a 68ch column to the left of a
           1280px shell and left 543px of empty page beside it. */}
-      <header className="mx-auto max-w-[68ch]">
+      <header className="measure">
         <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-muted">
           {post.pillar && getPillar(post.pillar) ? `${getPillar(post.pillar)!.name} · ` : ""}
           {isoDate(post.date)}

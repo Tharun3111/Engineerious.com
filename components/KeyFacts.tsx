@@ -2,7 +2,7 @@ export function KeyFacts({ items }: { items?: string[] }) {
   if (!items || items.length === 0) return null;
 
   return (
-    <div className="max-w-[68ch] border border-rule bg-surface px-5 py-4">
+    <div className="measure border border-rule bg-surface px-5 py-4">
       <p className="section-label">Key facts</p>
       <ul className="mt-2.5 space-y-2 text-[14.5px] leading-6">
         {items.map((fact, i) => (

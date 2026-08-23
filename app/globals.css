@@ -39,6 +39,12 @@
   --cat-news: #17171a;
   --cat-models: #55555a;
   --cat-blog: #85858b;
+
+  /* One reading measure for the whole site, in rem not ch.
+   * `ch` is relative to the current font's zero-width, so 68ch in the sans and
+   * 68ch in the serif are different widths — which left the record's header,
+   * TL;DR and prose sitting on three slightly different left edges. */
+  --measure: 42rem;
 }
 
 @theme inline {
@@ -350,7 +356,7 @@
  * spent on figures that own the full column (.artifact below), never on a
  * sidebar of tags or a subscribe box. */
 .prose {
-  max-width: 68ch;
+  max-width: var(--measure);
   margin-inline: auto;
   font-family: var(--font-display);
   font-size: 19px;
@@ -614,4 +620,11 @@
   font-size: 12.5px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+
+/* Every block on a record shares this. Figures opt out via .artifact. */
+.measure {
+  max-width: var(--measure);
+  margin-inline: auto;
 }
