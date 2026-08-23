@@ -76,14 +76,14 @@ export async function sendWelcomeEmail(email: string): Promise<void> {
       to: email,
       subject: "You're on the list — Engineerious",
       html: `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;">
-        <p style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#0a5fa5;font-weight:700;">Engineerious</p>
-        <h1 style="font-size:20px;color:#0d1b24;">You're subscribed.</h1>
+        <p style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#b3261e;font-weight:700;">Engineerious</p>
+        <h1 style="font-size:20px;color:#17171a;">You're subscribed.</h1>
         <p style="color:#555;font-size:15px;line-height:1.6;">
           You'll get source-checked AI engineering analysis when there's real work to share —
           no automated link dumps, no daily filler.
         </p>
         <p style="margin-top:24px;">
-          <a href="${site}/blog" style="color:#0a5fa5;font-weight:600;">Read the blog →</a>
+          <a href="${site}/blog" style="color:#b3261e;font-weight:600;">Read the blog →</a>
         </p>
         <p style="color:#999;font-size:12px;margin-top:32px;">
           <a href="{{{RESEND_UNSUBSCRIBE_URL}}}" style="color:#999;">Unsubscribe</a>

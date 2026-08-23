@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
 import "@fontsource-variable/ibm-plex-sans/wght.css";
-import "@fontsource-variable/newsreader/wght.css";
+import "@fontsource-variable/source-serif-4/wght.css";
+import "@fontsource-variable/source-serif-4/wght-italic.css";
 
 import { Footer } from "@/components/Footer";
 import { JsonLd } from "@/components/JsonLd";

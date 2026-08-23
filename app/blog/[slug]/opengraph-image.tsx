@@ -33,8 +33,8 @@ export default async function Image({ params }: { params: Promise<{ slug: string
           flexDirection: "column",
           justifyContent: "space-between",
           padding: "72px",
-          background: "#0d1b24",
-          color: "#f4f9fc",
+          background: "#17171a",
+          color: "#f5f5f3",
           fontFamily: "system-ui, sans-serif",
         }}
       >
@@ -59,7 +59,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
             </div>
           )}
         </div>
-        <div style={{ display: "flex", fontSize: 20, color: "#0a5fa5", fontWeight: 600 }}>
+        <div style={{ display: "flex", fontSize: 20, color: "#b3261e", fontWeight: 600 }}>
           {AUTHOR_NAME} · engineerious.com
         </div>
       </div>

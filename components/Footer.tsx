@@ -6,7 +6,7 @@ import { env } from "@/lib/env";
 
 export function Footer() {
   return (
-    <footer className="mt-24 bg-[#0D1B24] text-white">
+    <footer className="mt-24 bg-fg text-white">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.5fr_1fr_1fr] lg:px-8">
         <div>
           <Link href="/" aria-label="Engineerious home" className="inline-block">

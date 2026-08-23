@@ -16,8 +16,8 @@ export default function Image() {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: "72px",
-          background: "#0d1b24",
-          color: "#f4f9fc",
+          background: "#17171a",
+          color: "#f5f5f3",
           fontFamily: "system-ui, sans-serif",
         }}
       >
@@ -32,7 +32,7 @@ export default function Image() {
             Source-checked news, model analysis, and production guides
           </div>
         </div>
-        <div style={{ display: "flex", fontSize: 22, color: "#0a5fa5", fontWeight: 600 }}>
+        <div style={{ display: "flex", fontSize: 22, color: "#b3261e", fontWeight: 600 }}>
           engineerious.com
         </div>
       </div>

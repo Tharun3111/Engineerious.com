@@ -7,7 +7,7 @@ import { Diagram } from "@/components/Diagram";
 import { JsonLd } from "@/components/JsonLd";
 import { KeyFacts } from "@/components/KeyFacts";
 import { NewsletterCTA } from "@/components/NewsletterCTA";
-import { PillarBadge } from "@/components/PillarBadge";
+import { Plate, plateStateFor } from "@/components/Plate";
 import { ShareExcerpt } from "@/components/ShareExcerpt";
 import { StockStrip } from "@/components/StockStrip";
 import { TLDR } from "@/components/TLDR";
@@ -16,7 +16,8 @@ import { getPostRow } from "@/lib/content/sync";
 import { env } from "@/lib/env";
 import { AUTHOR_NAME, SITE_NAME } from "@/lib/site";
 import { getStockStripQuotes } from "@/lib/stocks";
-import { longDate } from "@/lib/time";
+import { getPillar } from "@/lib/pillars";
+import { isoDate } from "@/lib/time";
 
 export async function generateStaticParams() {
   const posts = await getAllPosts();
@@ -106,35 +107,56 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   return (
     <article className="space-y-7 py-8">
       <JsonLd data={blogPostingJsonLd(post)} />
-      <header className="space-y-3">
-        <PillarBadge slug={post.pillar} />
-        <h1 className="max-w-[68ch] text-[30px] font-bold leading-[1.15] tracking-tight">
+      {/* The record: plate first, then the strip. Everything is centred on the
+          reading measure — the old header pinned a 68ch column to the left of a
+          1280px shell and left 543px of empty page beside it. */}
+      <header className="mx-auto max-w-[68ch]">
+        <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-muted">
+          {post.pillar && getPillar(post.pillar) ? `${getPillar(post.pillar)!.name} · ` : ""}
+          {isoDate(post.date)}
+        </p>
+        <h1 className="font-display mt-3 text-balance text-[38px] font-semibold leading-[1.08] tracking-[-0.03em] sm:text-[44px]">
           {post.title}
         </h1>
-        <p className="max-w-[68ch] text-[16.5px] text-muted">{post.dek}</p>
-        <p className="font-mono text-[12px] text-muted">
-          {longDate(post.date)} · {post.readingMinutes} min read · {AUTHOR_NAME}
-        </p>
-        <div className="max-w-[68ch] border-y border-rule py-3 text-[13.5px] leading-6 text-muted">
-          <p>
-            <span className="font-semibold text-fg">Provenance:</span>{" "}
-            {post.origin === "human"
-              ? "Human-written."
-              : post.origin === "ai_assisted"
-                ? "Written with disclosed AI assistance."
-                : "AI-generated first draft."}{" "}
-            {post.testedStatus === "not_tested"
-              ? "The claims were not independently tested by Engineerious."
-              : post.testedStatus === "tested_once"
-                ? "The described test was run once."
-                : "The described test was independently repeated."}
-          </p>
-          {post.reviewedBy && post.reviewedAt && (
-            <p>
-              Reviewed by {post.reviewedBy} on {longDate(post.reviewedAt)}.
-            </p>
-          )}
+        <p className="font-display mt-4 text-[19px] leading-[1.55] text-muted">{post.dek}</p>
+
+        {/* Reproduction outranks everything else on the page, by design. */}
+        <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-3">
+          <Plate
+            size="lg"
+            state={plateStateFor(post)}
+            on={post.reviewedAt ?? null}
+            by={post.reviewedBy ?? null}
+          />
+          <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted">
+            {post.readingMinutes} min read
+          </span>
         </div>
+
+        {/* One row of facts, so a label/value strip — never a table. Tables are
+            for the index, where comparison across rows is the job. */}
+        <dl className="mt-7 grid grid-cols-2 gap-x-6 gap-y-5 border-y border-rule py-5 sm:grid-cols-4">
+          <div>
+            <dt className="font-sans text-[10px] font-semibold uppercase tracking-[0.11em] text-muted">Origin</dt>
+            <dd className="ver mt-1.5 text-fg">
+              {post.origin === "human" ? "Human" : post.origin === "ai_assisted" ? "AI-assisted" : "AI draft"}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-sans text-[10px] font-semibold uppercase tracking-[0.11em] text-muted">Sources</dt>
+            <dd className="ver mt-1.5 text-fg">{post.sourceStatus}</dd>
+          </div>
+          <div>
+            <dt className="font-sans text-[10px] font-semibold uppercase tracking-[0.11em] text-muted">Tested</dt>
+            <dd className="ver mt-1.5 text-fg">{post.testedStatus.replaceAll("_", " ")}</dd>
+          </div>
+          <div>
+            <dt className="font-sans text-[10px] font-semibold uppercase tracking-[0.11em] text-muted">Reviewed</dt>
+            <dd className="ver mt-1.5 text-fg">
+              {post.reviewedAt ? isoDate(post.reviewedAt) : "\u2014"}
+            </dd>
+          </div>
+        </dl>
       </header>
 
       <TLDR text={post.tldr} />

@@ -58,10 +58,10 @@ export function Nav() {
             })}
           </ul>
 
-          {/* White-on-navy, not the old #22c55e: green is nowhere in the Proof
-           * Loop palette, and on the navy bar a brand-blue fill would sit at
-           * ~2.5:1 against the header itself. White is the only fill that reads
-           * as the one primary action from across the page. */}
+          {/* White on the ink bar. The CTA was a saturated green before, which
+           * belonged to no palette this site has ever had. Red is unavailable by
+           * rule — it means "unpatched" and nothing else — so white is the only
+           * fill that reads as the one primary action. */}
           <Link
             href="/subscribe"
             className="ml-auto inline-flex min-h-11 items-center justify-center bg-white px-4 text-[14px] font-semibold text-fg transition-colors duration-150 hover:bg-accent-tint focus-visible:outline-white md:ml-2"

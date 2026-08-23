@@ -214,11 +214,11 @@ export default async function HomePage() {
               * problem, and "every day" was a cadence one reviewer could only meet with
               * machine drafts. This states the beat the archive shows was already being
               * covered: seven of the first eight posts were agent containment failures. */}
-            <h1 className="mt-5 max-w-4xl text-balance text-[34px] font-bold leading-[1.05] tracking-[-0.035em] text-fg sm:mt-7 sm:text-[56px] sm:tracking-[-0.045em] lg:text-[64px]">
-              Your agent framework shipped a{" "}
-              <span className="font-display font-medium italic text-accent-strong">
-                containment bug last week.
-              </span>
+            {/* Fully in the serif. The old split — bold sans, then a serif italic
+              * clause — is the 2026 AI-newsletter hero in one line. The serif is the
+              * page's voice now; the sans is demoted to labels and chrome. */}
+            <h1 className="font-display mt-5 max-w-4xl text-balance text-[36px] font-semibold leading-[1.06] tracking-[-0.028em] text-fg sm:mt-7 sm:text-[54px] lg:text-[62px]">
+              Your agent framework shipped a containment bug last week.
             </h1>
             <p className="mt-4 max-w-2xl text-pretty text-[16px] leading-7 text-muted sm:mt-6 sm:text-[19px] sm:leading-8">
               I track every disclosed exploit, containment failure, and patched version

@@ -186,7 +186,7 @@ export function renderDigestEmail(input: {
   const highlightRows = input.highlights
     .map(
       (h) => `<tr><td style="padding:10px 0;border-bottom:1px solid #e5e5e5;">
-        <a href="${escapeHtml(h.url)}" style="color:#0a5fa5;text-decoration:none;font-weight:600;">${escapeHtml(h.title)}</a>
+        <a href="${escapeHtml(h.url)}" style="color:#b3261e;text-decoration:none;font-weight:600;">${escapeHtml(h.title)}</a>
         <div style="color:#555;font-size:14px;margin-top:4px;">${escapeHtml(h.oneLiner)}</div>
       </td></tr>`,
     )
@@ -204,12 +204,12 @@ export function renderDigestEmail(input: {
     .join("");
 
   return `<!DOCTYPE html>
-<html><body style="margin:0;padding:0;background:#f4f9fc;font-family:-apple-system,Helvetica,Arial,sans-serif;">
+<html><body style="margin:0;padding:0;background:#f5f5f3;font-family:-apple-system,Helvetica,Arial,sans-serif;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
 <table role="presentation" width="100%" style="max-width:600px;background:#ffffff;border-radius:8px;overflow:hidden;">
   <tr><td style="padding:28px 28px 8px;">
-    <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#0a5fa5;font-weight:700;">Engineerious Daily — ${escapeHtml(input.date)}</div>
-    <h1 style="font-size:22px;line-height:1.3;margin:8px 0 4px;color:#0d1b24;">${escapeHtml(input.title)}</h1>
+    <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#b3261e;font-weight:700;">Engineerious Daily — ${escapeHtml(input.date)}</div>
+    <h1 style="font-size:22px;line-height:1.3;margin:8px 0 4px;color:#17171a;">${escapeHtml(input.title)}</h1>
     <p style="color:#555;font-size:15px;line-height:1.5;margin:0 0 20px;">${escapeHtml(input.dek)}</p>
   </td></tr>
   <tr><td style="padding:0 28px;">
@@ -224,7 +224,7 @@ export function renderDigestEmail(input: {
       : ""
   }
   <tr><td style="padding:24px 28px;">
-    <a href="${escapeHtml(input.postUrl)}" style="display:inline-block;background:#0d1b24;color:#ffffff;text-decoration:none;padding:10px 20px;border-radius:6px;font-weight:600;font-size:14px;">Read the full post →</a>
+    <a href="${escapeHtml(input.postUrl)}" style="display:inline-block;background:#17171a;color:#ffffff;text-decoration:none;padding:10px 20px;border-radius:6px;font-weight:600;font-size:14px;">Read the full post →</a>
   </td></tr>
   <tr><td style="padding:16px 28px 28px;border-top:1px solid #eee;">
     <p style="color:#999;font-size:12px;line-height:1.6;margin:0;">

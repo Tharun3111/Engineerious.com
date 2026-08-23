@@ -2,9 +2,13 @@ import Link from "next/link";
 
 import type { FeedSort } from "@/lib/queries";
 
-/** /news and /models are closed (lib/public-launch.ts) — a tab strip of one is
- *  just a heading, so SectionTabs renders nothing until a second surface returns. */
+/** /news and /models are closed (lib/public-launch.ts). */
 const PUBLIC_SECTIONS = [{ label: "Blog", path: "/blog" }] as const;
+
+/** A tab strip of one is just a heading wearing an underline — it offers no
+ *  choice and costs a row of chrome. Renders nothing until a second public
+ *  section returns, then comes back automatically. */
+const HAS_CHOICE = PUBLIC_SECTIONS.length > 1;
 
 /** Tab strip + hot/new toggle. Server component — sort is a URL param, not state. */
 export function SectionTabs({
@@ -15,6 +19,9 @@ export function SectionTabs({
   active: string;
   sort?: FeedSort;
 }) {
+  // Sort still matters on a feed page even with one section; the tab row does not.
+  if (!HAS_CHOICE && !sort) return null;
+
   return (
     <div className="flex flex-wrap items-end justify-between gap-4 border-y border-rule">
       <nav aria-label="Content sections">

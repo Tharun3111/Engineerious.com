@@ -24,7 +24,7 @@ const ROUTES = [
   { path: "/models", expect: 404 },
   { path: "/news/1", expect: 404 },
   { path: "/models/anything", expect: 404 },
-  { path: "/blog", feed: true, contains: "Practical guides for building reliable AI systems." },
+  { path: "/blog", feed: true, contains: "What escaped, and whether I could make it happen again." },
   // Gated by PUBLIC_RESEARCH_ENABLED (middleware.ts + lib/public-launch.ts). This
   // list assumes the flag is "true" (the current default — see docs/launch-runbook.md).
   // Set QA_GATE_CLOSED=true when checking a deployment with the flag off.

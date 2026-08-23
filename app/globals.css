@@ -2,32 +2,43 @@
 
 /* Engineerious: an independent AI engineering evidence desk. */
 :root {
-  --bg: #f4f9fc;
+  /* Reproduction Log — achromatic ground, one saturated value.
+   *
+   * The old palette was navy + blue on a blue-tinted white: competent, and
+   * indistinguishable from every AI newsletter of 2026. Worse, blue is the other
+   * cliche of this specific genre (cve.org's chrome is #162e51).
+   *
+   * --alarm is the only saturated colour in the system and it means exactly one
+   * thing: unpatched. Not links, not the logo, not hover, not headings. When the
+   * eye catches red here it has learned something. Severity keeps its own heat
+   * ramp but that ramp lives INSIDE a chip at chip scale and never touches the
+   * page, which is how GitHub keeps #d1242f from becoming its brand colour. */
+  --bg: #f5f5f3;
   --surface: #ffffff;
-  --surface-2: #e8f1f6;
-  --fg: #0d1b24;
-  --muted: #566b78;
-  --rule: #cbdce6;
-  --rule-strong: #8eabbc;
-  --accent: #0d1b24;
-  --accent-strong: #0a5fa5;
-  --accent-tint: #dceef8;
+  --surface-2: #eaeae7;
+  --fg: #17171a;
+  --muted: #55555a;
+  --rule: #dedede;
+  --rule-strong: #c4c4c6;
+
+  /* Kept so existing components resolve, remapped onto the achromatic ramp.
+   * `accent` is ink, not a hue — nothing on this site is blue any more. */
+  --accent: #17171a;
+  --accent-strong: #2b2b2e;
+  --accent-tint: #eaeae7;
   --accent-fg: #ffffff;
-  --checkpoint: #22c55e;
-  /* Distinct from --checkpoint: that's a decorative fill/dot color (2.3:1 on
-   * white, fine for small non-text UI). Readable green/red text needs real
-   * contrast — these two are the values already proven at 5:1+ on white. */
-  --positive: #1a7f37;
-  --negative: #c92a2a;
-  --ring: #0a5fa5;
-  /* Section identity. One hue per content type, used everywhere that type is
-   * named (home desk lanes, section eyebrows, feed pills) so the colour means
-   * "this is Models" rather than "lane two". All three clear 4.5:1 as text on
-   * --surface, unlike the raw #F59E0B amber they replace (1.9:1) — a decorative
-   * hex that could never be promoted to a label without failing contrast. */
-  --cat-news: #0a5fa5;
-  --cat-models: #1a7f37;
-  --cat-blog: #9b4507;
+
+  --alarm: #b3261e;
+  --checkpoint: #55555a;
+  --positive: #2b2b2e;
+  --negative: #b3261e;
+  --ring: #b3261e;
+
+  /* Category identity now separates by weight and rule, not by hue — three
+   * different colours for three sections was decoration, not information. */
+  --cat-news: #17171a;
+  --cat-models: #55555a;
+  --cat-blog: #85858b;
 }
 
 @theme inline {
@@ -49,10 +60,18 @@
   --color-cat-news: var(--cat-news);
   --color-cat-models: var(--cat-models);
   --color-cat-blog: var(--cat-blog);
+  --color-alarm: var(--alarm);
 
-  --font-sans: "IBM Plex Sans Variable", sans-serif;
-  --font-display: "Newsreader Variable", Georgia, serif;
-  --font-mono: "SFMono-Regular", "Cascadia Code", "Roboto Mono", monospace;
+  /* Three roles, hard budget. The serif carries display AND prose — it is the
+   * page's voice. The sans is demoted to labels, nav and chrome only.
+   *
+   * Mono is a SEMANTIC, not a texture: version strings, identifiers, dates and
+   * payloads. The moment mono appears in a headline it stops meaning "this
+   * string is exact, copy it verbatim" and the site loses a channel it cannot
+   * get back. `.font-mono` on a heading is a bug, not a style choice. */
+  --font-sans: "IBM Plex Sans Variable", system-ui, sans-serif;
+  --font-display: "Source Serif 4 Variable", "Iowan Old Style", Palatino, Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
 /*
@@ -240,8 +259,8 @@
 .home-hero-grid {
   background-color: var(--surface);
   background-image:
-    linear-gradient(to right, rgb(10 95 165 / 0.045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(10 95 165 / 0.045) 1px, transparent 1px);
+    linear-gradient(to right, rgb(23 23 26 / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(23 23 26 / 0.05) 1px, transparent 1px);
   background-size: 28px 28px;
 }
 
@@ -249,9 +268,9 @@
   width: 100%;
   overflow: hidden;
   border: 1px solid rgb(255 255 255 / 0.16);
-  background: #0d1b24;
+  background: var(--fg);
   color: white;
-  box-shadow: 0 24px 70px rgb(13 27 36 / 0.18);
+  box-shadow: none;
 }
 
 .proof-loop-track {
@@ -261,7 +280,7 @@
 }
 
 .proof-loop-stage {
-  fill: #22c55e;
+  fill: #ffffff;
   font-family: var(--font-mono);
   font-size: 15px;
   font-weight: 700;
@@ -291,11 +310,14 @@
   font-weight: 500;
 }
 
+/* Deliberately NOT --alarm. Red on this site means "unpatched" and nothing else;
+ * a decorative liveness dot wearing the alarm colour spends the one signal the
+ * palette has on "the page loaded". */
 .status-pulse {
   width: 8px;
   height: 8px;
-  background: #22c55e;
-  box-shadow: 0 0 0 4px rgb(34 197 94 / 0.13);
+  background: var(--fg);
+  box-shadow: 0 0 0 4px rgb(23 23 26 / 0.10);
 }
 
 .desk-lane {
@@ -308,8 +330,8 @@
 
 .desk-lane:hover {
   z-index: 1;
-  background: #edf6fa;
-  box-shadow: 0 18px 45px rgb(13 27 36 / 0.09);
+  background: var(--surface-2);
+  box-shadow: none;
   transform: translateY(-4px);
 }
 
@@ -322,10 +344,17 @@
 }
 
 /* Long-form article body — /blog/[slug] and /about opt into this. */
+/* Centred, and set in the serif. It was 68ch pinned to the LEFT of a 1280px
+ * shell, which left 543px of dead page beside every paragraph — 45% of a 1440px
+ * viewport, and the first thing the owner pointed at. The width freed up here is
+ * spent on figures that own the full column (.artifact below), never on a
+ * sidebar of tags or a subscribe box. */
 .prose {
   max-width: 68ch;
-  font-size: 17px;
-  line-height: 1.75;
+  margin-inline: auto;
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1.62;
 }
 
 .prose > * + * {
@@ -359,7 +388,7 @@
  * :visited rule would lose to this unlayered `.prose a` and visited links would
  * silently stop changing colour. Same file, same layer, specificity decides. */
 .prose a:visited {
-  color: #614b75;
+  color: var(--muted);
 }
 
 /*
@@ -473,4 +502,116 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+
+/* ---------------------------------------------------------------------- */
+/* The plate — signature object of the Reproduction Log.                   */
+/*                                                                         */
+/* Reproduction status outranks severity, visually and in the DOM. A        */
+/* security engineer parses "reproduced / not reproduced / not attempted"   */
+/* faster and more usefully than a CVSS number, and it is the one field no  */
+/* competitor can fill.                                                    */
+/*                                                                         */
+/* Each state differs in BORDER STYLE as well as weight, never colour       */
+/* alone — a status system encoded only in hue disappears for a colourblind */
+/* reader and in print. --alarm deliberately does not appear here: red is   */
+/* reserved for "unpatched", and an unreproduced finding is not a danger    */
+/* state, it is an honesty state.                                          */
+/* ---------------------------------------------------------------------- */
+.plate {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.65rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.plate .plate-dot {
+  width: 5px;
+  height: 5px;
+  flex: none;
+}
+
+.plate .plate-meta {
+  color: var(--muted);
+}
+
+.plate-lg {
+  font-size: 12.5px;
+  padding: 0.65rem 0.9rem;
+  gap: 0.75rem;
+}
+
+.plate-lg .plate-dot {
+  width: 7px;
+  height: 7px;
+}
+
+/* Reproduced — solid box, solid dot. The strongest claim on the site. */
+.plate-reproduced {
+  border: 1px solid var(--fg);
+  color: var(--fg);
+}
+.plate-reproduced .plate-dot {
+  background: var(--fg);
+}
+
+/* Vendor-confirmed — solid, offset shadow. Someone else vouched. */
+.plate-vendor {
+  border: 1px solid var(--muted);
+  color: var(--fg);
+  box-shadow: 3px 3px 0 var(--surface-2);
+}
+.plate-vendor .plate-dot {
+  background: var(--muted);
+}
+
+/* Not reproduced — dashed. Tried, and it did not happen. */
+.plate-not-reproduced {
+  border: 1px dashed var(--muted);
+  color: var(--muted);
+}
+.plate-not-reproduced .plate-dot {
+  border: 1px solid var(--muted);
+}
+
+/* Not attempted — dotted, lightest. Honest about the gap. */
+.plate-not-attempted {
+  border: 1px dotted var(--rule-strong);
+  color: var(--rule-strong);
+}
+.plate-not-attempted .plate-dot {
+  border: 1px dotted var(--rule-strong);
+}
+
+/* The figure owns the full column at the sentence it explains, and the
+ * paragraph after it is written as if the reader already looked. */
+.artifact {
+  max-width: 860px;
+  margin: 2.25rem auto;
+}
+
+.artifact-cap {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--muted);
+  margin-bottom: 0.7rem;
+}
+
+/* Version strings, identifiers and dates. Tabular so ranges align down a
+ * column — the thing GitHub's advisory pages get wrong. */
+.ver {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
