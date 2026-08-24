@@ -10,9 +10,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "/links" },
 };
 
+// "/news" used to be listed here too — it's closed (lib/public-launch.ts), so
+// linking it from a link-in-bio page would send every visitor to a 404.
 const LINKS: { label: string; href: string; external?: boolean }[] = [
   { label: "Read the blog", href: "/blog" },
-  { label: "Latest AI news", href: "/news" },
   { label: "Get the newsletter", href: "/subscribe" },
   ...(env.linkedinUrl ? [{ label: "LinkedIn", href: env.linkedinUrl, external: true }] : []),
   ...(env.instagramUrl ? [{ label: "Instagram", href: env.instagramUrl, external: true }] : []),
@@ -26,7 +27,7 @@ export default function LinksPage() {
       <Link href="/" aria-label="Engineerious home">
         <Logo className="h-auto w-[180px]" />
       </Link>
-      <p className="mt-4 text-[15px] text-muted">Tharun Chowdary — AI engineer &amp; founder.</p>
+      <p className="mt-4 text-[15px] text-muted">Tharun Chowdary — I teach AI engineering, one entry at a time.</p>
 
       <nav className="mt-8 flex w-full flex-col gap-3">
         {LINKS.map((link) =>

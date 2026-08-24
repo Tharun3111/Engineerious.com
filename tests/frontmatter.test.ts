@@ -24,6 +24,20 @@ describe("parseFrontmatter", () => {
     expect(parsed.draft).toBe(false);
     expect(parsed.tags).toEqual([]);
     expect(parsed.authenticityStatus).toBe("pending");
+    // ScopeBlock (components/ScopeBlock.tsx) renders nothing on an unfilled
+    // entry — that only holds if an entry without either field parses to [], not
+    // undefined, so a caller can check .length without a null guard everywhere.
+    expect(parsed.teaches).toEqual([]);
+    expect(parsed.notCovered).toEqual([]);
+  });
+
+  it("carries an entry's stated scope through unchanged", () => {
+    const parsed = parseFrontmatter(
+      { ...base, teaches: ["Rank metrics by separation"], notCovered: ["Choosing a framework"] },
+      "scoped.mdx",
+    );
+    expect(parsed.teaches).toEqual(["Rank metrics by separation"]);
+    expect(parsed.notCovered).toEqual(["Choosing a framework"]);
   });
 
   it("accepts verified content with reviewer and timestamp", () => {

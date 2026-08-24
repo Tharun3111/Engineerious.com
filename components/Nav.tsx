@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { AuthorBadge } from "@/components/AuthorBadge";
+import { CommandPalette } from "@/components/CommandPalette";
+
 const LINKS = [
-  { href: "/blog", label: "The log" },
+  { href: "/blog", label: "Entries" },
   { href: "/archive", label: "Archive" },
   { href: "/about", label: "About" },
 ] as const;
@@ -15,32 +18,31 @@ function isCurrent(pathname: string, href: string): boolean {
 }
 
 /**
- * A masthead, not a nav bar.
- *
- * This was a black sticky bar carrying the logo lockup, a mono tagline, five links
- * and a filled CTA — a SaaS header, and the most template-looking object on the
- * site. It also fought the page: an ink slab sitting above content that has no
- * other dark element anywhere.
- *
- * Now the wordmark is set in the display serif on the same paper as everything
- * else, closed by a 2px ink rule. The chrome and the content are made of the same
- * material, which is the whole point of the concept.
+ * The masthead. Wordmark in the display face (Martian Mono), Tharun's monogram
+ * and name beside it — the site's job is his brand, and before this redesign
+ * his name never rendered anywhere on the page, only in metadata. The old
+ * tagline here ("Agent containment failures / Tracked by one engineer") named
+ * a framing this site no longer has; replaced with the command palette, which
+ * does real work instead of describing the site.
  */
 export function Nav() {
   const pathname = usePathname() ?? "";
 
   return (
-    <header className="border-b-2 border-fg bg-bg">
+    <header className="border-b border-rule bg-surface">
       <nav aria-label="Primary" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-baseline gap-x-7 gap-y-3 py-5">
-          <Link href="/" className="shrink-0" aria-label="Engineerious home">
-            <span className="font-display text-[21px] font-semibold tracking-[-0.025em] text-fg sm:text-[26px] lg:text-[28px]">
-              Engineerious{" "}
-              <span className="font-normal italic text-muted">/ Reproduction Log</span>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3 py-3">
+          <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="Engineerious home">
+            <AuthorBadge />
+            <span className="leading-tight">
+              <span className="font-display block text-[15px] font-semibold tracking-[-0.03em] text-fg">
+                engineerious
+              </span>
+              <span className="font-mono block text-[10.5px] text-muted">/ tharun chowdary</span>
             </span>
           </Link>
 
-          <ul className="flex items-baseline gap-x-6">
+          <ul className="flex items-baseline gap-x-5">
             {LINKS.map((link) => {
               const current = isCurrent(pathname, link.href);
               return (
@@ -48,10 +50,8 @@ export function Nav() {
                   <Link
                     href={link.href}
                     aria-current={current ? "page" : undefined}
-                    className={`inline-flex min-h-11 items-center text-[13.5px] transition-colors duration-150 ${
-                      current
-                        ? "font-semibold text-fg underline decoration-1 underline-offset-[6px]"
-                        : "text-muted hover:text-fg"
+                    className={`font-mono inline-flex min-h-11 items-center text-[12px] transition-colors duration-150 ${
+                      current ? "font-medium text-accent" : "text-muted hover:text-fg"
                     }`}
                   >
                     {link.label}
@@ -61,15 +61,11 @@ export function Nav() {
             })}
           </ul>
 
-          <p className="ml-auto hidden text-right font-sans text-[10.5px] uppercase leading-[1.5] tracking-[0.13em] text-muted lg:block">
-            Agent containment failures
-            <br />
-            Tracked by one engineer
-          </p>
+          <CommandPalette />
 
           <Link
             href="/subscribe"
-            className="inline-flex min-h-11 items-center text-[13.5px] font-semibold text-fg underline decoration-1 underline-offset-[6px] hover:decoration-2"
+            className="btn btn-primary btn-sm shrink-0"
           >
             Subscribe
           </Link>

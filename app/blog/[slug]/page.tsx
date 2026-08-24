@@ -3,11 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MDXRemote } from "next-mdx-remote/rsc";
 
+import { AuthorBadge } from "@/components/AuthorBadge";
 import { Diagram } from "@/components/Diagram";
 import { JsonLd } from "@/components/JsonLd";
 import { KeyFacts } from "@/components/KeyFacts";
 import { NewsletterCTA } from "@/components/NewsletterCTA";
-import { Plate, plateStateFor } from "@/components/Plate";
+import { ScopeBlock } from "@/components/ScopeBlock";
 import { ShareExcerpt } from "@/components/ShareExcerpt";
 import { StockStrip } from "@/components/StockStrip";
 import { TLDR } from "@/components/TLDR";
@@ -112,35 +113,36 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   return (
     <article className="mx-auto max-w-[860px] space-y-7 py-8">
       <JsonLd data={blogPostingJsonLd(post)} />
-      {/* The record: plate first, then the strip. Everything is centred on the
-          reading measure — the old header pinned a 68ch column to the left of a
-          1280px shell and left 543px of empty page beside it. */}
+      {/* Everything below is centred on the reading measure — the old header
+          pinned a 68ch column to the left of a 1280px shell and left 543px of
+          empty page beside it. */}
       <header className="measure">
         <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-muted">
           {post.pillar && getPillar(post.pillar) ? `${getPillar(post.pillar)!.name} · ` : ""}
           {isoDate(post.date)}
         </p>
-        <h1 className="font-display mt-3 text-balance text-[38px] font-semibold leading-[1.08] tracking-[-0.03em] sm:text-[44px]">
+        <h1 className="font-display mt-3 text-balance text-[30px] font-semibold leading-[1.2] tracking-[-0.025em] sm:text-[36px]">
           {post.title}
         </h1>
-        <p className="font-display mt-4 text-[19px] leading-[1.55] text-muted">{post.dek}</p>
+        <p className="mt-4 text-[16.5px] leading-[1.6] text-muted">{post.dek}</p>
 
-        {/* Reproduction outranks everything else on the page, by design. */}
-        <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-3">
-          <Plate
-            size="lg"
-            state={plateStateFor(post)}
-            on={post.reviewedAt ?? null}
-            by={post.reviewedBy ?? null}
-          />
-          <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted">
-            {post.readingMinutes} min read
+        {/* A visible byline — before this redesign AUTHOR_NAME appeared only in
+            metadata and JSON-LD, never rendered on the page itself. */}
+        <div className="mt-5 flex items-center gap-2.5">
+          <AuthorBadge />
+          <span className="text-[13px]">
+            <span className="font-semibold">{AUTHOR_NAME}</span>
+            <span className="ver ml-2 text-muted">{post.readingMinutes} min read</span>
           </span>
+        </div>
+
+        <div className="mt-6">
+          <ScopeBlock teaches={post.teaches} notCovered={post.notCovered} />
         </div>
 
         {/* One row of facts, so a label/value strip — never a table. Tables are
             for the index, where comparison across rows is the job. */}
-        <dl className="mt-7 grid grid-cols-2 gap-x-6 gap-y-5 border-y border-rule py-5 sm:grid-cols-4">
+        <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 border-y border-rule py-5 sm:grid-cols-4">
           <div>
             <dt className="font-sans text-[10px] font-semibold uppercase tracking-[0.11em] text-muted">Origin</dt>
             <dd className="ver mt-1.5 text-fg">

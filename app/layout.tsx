@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 
-import "@fontsource-variable/ibm-plex-sans/wght.css";
-import "@fontsource-variable/source-serif-4/wght.css";
-import "@fontsource-variable/source-serif-4/wght-italic.css";
+import "@fontsource-variable/instrument-sans/wght.css";
+import "@fontsource-variable/martian-mono/wght.css";
+import "@fontsource/dm-mono/400.css";
+import "@fontsource/dm-mono/500.css";
 
 import { Footer } from "@/components/Footer";
 import { JsonLd } from "@/components/JsonLd";
@@ -14,11 +15,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
   title: {
-    default: "Engineerious — agent security for engineers running AI in production",
+    default: "Engineerious — Tharun Chowdary teaches AI engineering",
     template: "%s · Engineerious",
   },
   description:
-    "Disclosed exploits, containment failures, and patched versions across LangChain, CrewAI, AutoGen, and MCP — with the version you need to be on. Source-checked, by Tharun Chowdary.",
+    "What I've learned building AI systems that work past the demo — evaluation, MCP, retrieval, and the production details a clean demo leaves out. Written by Tharun Chowdary.",
   alternates: {
     canonical: "/",
     types: { "application/rss+xml": "/rss.xml" },
@@ -51,6 +52,14 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+const personJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: AUTHOR_NAME,
+  url: env.siteUrl,
+  sameAs: [env.linkedinUrl, env.githubUrl, env.twitterUrl].filter((url): url is string => Boolean(url)),
+};
+
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -71,6 +80,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+        <JsonLd data={personJsonLd} />
         <JsonLd data={organizationJsonLd} />
         <JsonLd data={websiteJsonLd} />
         <a

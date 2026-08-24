@@ -11,6 +11,16 @@ const frontmatterSchema = z
     canonical: z.string().url().optional(),
     hero: z.string().optional(),
     tags: z.array(z.string()).default([]),
+    /*
+     * The signature element of the redesign (see .scope in app/globals.css and
+     * components/ScopeBlock.tsx): what a reader will be able to do after this
+     * entry, and what it deliberately does not cover. Both default to empty —
+     * ScopeBlock renders nothing rather than a hollow box when neither is set,
+     * so an unfilled post degrades to exactly what it looked like before this
+     * field existed.
+     */
+    teaches: z.array(z.string()).default([]),
+    notCovered: z.array(z.string()).default([]),
     draft: z.boolean().default(false),
     format: z.enum(["article", "model_note", "field_note"]),
     origin: z.enum(["human", "ai_assisted", "ai_generated"]),

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { AuthorBadge } from "@/components/AuthorBadge";
 import { NewsletterCTA } from "@/components/NewsletterCTA";
 import { env } from "@/lib/env";
 
@@ -14,7 +15,10 @@ export default function AboutPage() {
   return (
     <div className="py-14 sm:py-20">
       <header className="grid gap-6 border-b border-rule pb-12 lg:grid-cols-[18rem_1fr] lg:pb-16">
-        <p className="eyebrow">About Tharun</p>
+        <div className="flex items-center gap-2">
+          <AuthorBadge />
+          <p className="eyebrow">About Tharun</p>
+        </div>
         <div>
           <h1 className="font-display max-w-3xl text-balance text-[46px] font-semibold leading-[1.02] tracking-[-0.04em] sm:text-[62px]">
             Turning AI engineering work into useful public knowledge.

@@ -130,6 +130,13 @@ export async function getAllDbPosts(): Promise<BlogPost[]> {
         body: r.body!,
         readingMinutes: readingMinutes(r.body!),
         source: "db" as const,
+        // DB-native pipeline posts don't carry per-post teaches/notCovered data —
+        // that's an MDX/human-authored concept. Empty arrays here, not undefined,
+        // because Frontmatter declares them required-with-default: a DB row that
+        // skipped these keys entirely would otherwise fail the type, not just
+        // render an empty ScopeBlock.
+        teaches: [],
+        notCovered: [],
         tldr: r.tldr ?? undefined,
         keyFacts: (r.keyFacts as string[] | null) ?? undefined,
         relevantTickers: (r.relevantTickers as string[] | null) ?? undefined,

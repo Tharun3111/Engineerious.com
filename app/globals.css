@@ -1,49 +1,39 @@
 @import "tailwindcss";
 
-/* Engineerious: an independent AI engineering evidence desk. */
+/* Engineerious: Tharun Chowdary teaches AI engineering in public. */
 :root {
-  /* Reproduction Log — achromatic ground, one saturated value.
+  /* Daylight technical — picked by Tharun from a 16-specimen style board
+   * (C-05 palette / T-01+T-04 type / U-01 table / U-03 tiles / U-06 command
+   * palette). Replaces the achromatic Reproduction Log palette, which was
+   * rejected outright ("i dont like it") along with the whole agent-security
+   * framing it served.
    *
-   * The old palette was navy + blue on a blue-tinted white: competent, and
-   * indistinguishable from every AI newsletter of 2026. Worse, blue is the other
-   * cliche of this specific genre (cve.org's chrome is #162e51).
-   *
-   * --alarm is the only saturated colour in the system and it means exactly one
-   * thing: unpatched. Not links, not the logo, not hover, not headings. When the
-   * eye catches red here it has learned something. Severity keeps its own heat
-   * ramp but that ramp lives INSIDE a chip at chip scale and never touches the
-   * page, which is how GitHub keeps #d1242f from becoming its brand colour. */
-  --bg: #f5f5f3;
+   * One accent — --accent, a working blue — used on links, refs, the active
+   * nav state, and nothing else. Values below are the exact hexes verified
+   * against a WCAG contrast sweep at 375/768/1440, light and dark. */
+  --bg: #f7f8fa;
   --surface: #ffffff;
-  --surface-2: #eaeae7;
-  --fg: #17171a;
-  --muted: #55555a;
-  --rule: #dedede;
-  --rule-strong: #c4c4c6;
+  --surface-2: #f1f3f7;
+  --fg: #0f1729;
+  --muted: #4a5468;
+  --rule: #e2e6ec;
+  --rule-strong: #cfd5df;
 
-  /* Kept so existing components resolve, remapped onto the achromatic ramp.
-   * `accent` is ink, not a hue — nothing on this site is blue any more. */
-  --accent: #17171a;
-  --accent-strong: #2b2b2e;
-  --accent-tint: #eaeae7;
+  --accent: #0b57d0;
+  --accent-strong: #083e9e;
+  --accent-tint: #e8f0fe;
   --accent-fg: #ffffff;
 
+  /* Reserved for a real danger/error state (form validation, a broken build) —
+   * not spent on content classification. The old palette burned red on
+   * "unpatched," which doesn't exist as a concept here any more. */
   --alarm: #b3261e;
-  --checkpoint: #55555a;
-  --positive: #2b2b2e;
-  --negative: #b3261e;
-  --ring: #b3261e;
+  --ring: var(--accent);
 
-  /* Category identity now separates by weight and rule, not by hue — three
-   * different colours for three sections was decoration, not information. */
-  --cat-news: #17171a;
-  --cat-models: #55555a;
-  --cat-blog: #85858b;
-
-  /* One reading measure for the whole site, in rem not ch.
-   * `ch` is relative to the current font's zero-width, so 68ch in the sans and
-   * 68ch in the serif are different widths — which left the record's header,
-   * TL;DR and prose sitting on three slightly different left edges. */
+  /* One reading measure for the whole site, in rem not ch — `ch` is relative to
+   * the current font's zero-width, so 68ch in two different faces is two
+   * different widths. Every block on a record shares this so nothing sits on
+   * its own left edge. */
   --measure: 42rem;
 }
 
@@ -59,25 +49,23 @@
   --color-accent-strong: var(--accent-strong);
   --color-accent-tint: var(--accent-tint);
   --color-accent-fg: var(--accent-fg);
-  --color-checkpoint: var(--checkpoint);
-  --color-positive: var(--positive);
-  --color-negative: var(--negative);
-  --color-ring: var(--ring);
-  --color-cat-news: var(--cat-news);
-  --color-cat-models: var(--cat-models);
-  --color-cat-blog: var(--cat-blog);
   --color-alarm: var(--alarm);
+  --color-ring: var(--ring);
 
-  /* Three roles, hard budget. The serif carries display AND prose — it is the
-   * page's voice. The sans is demoted to labels, nav and chrome only.
+  /* Three roles, hard budget — the register Tharun picked is "dense, technical,
+   * information-rich," not editorial.
    *
-   * Mono is a SEMANTIC, not a texture: version strings, identifiers, dates and
-   * payloads. The moment mono appears in a headline it stops meaning "this
-   * string is exact, copy it verbatim" and the site loses a channel it cannot
-   * get back. `.font-mono` on a heading is a bug, not a style choice. */
-  --font-sans: "IBM Plex Sans Variable", system-ui, sans-serif;
-  --font-display: "Source Serif 4 Variable", "Iowan Old Style", Palatino, Georgia, serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+   * Display (headlines only): Martian Mono. Deliberately not a serif or a safe
+   * grotesk — distinctive enough that a screenshot is recognisable.
+   * Body (default, prose, UI labels): Instrument Sans — carries long-form
+   * reading, which a display mono cannot do at paragraph length.
+   * Data (dates, refs, table cells, metadata): DM Mono. A SEMANTIC, not a
+   * texture — it means "this value is exact." The moment it leaks into
+   * headlines or prose it stops meaning that and the site loses a channel it
+   * can't get back. */
+  --font-sans: "Instrument Sans Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Martian Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-mono: "DM Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
 /*
@@ -99,7 +87,7 @@
     background: var(--bg);
     color: var(--fg);
     font-family: var(--font-sans);
-    font-size: 17px;
+    font-size: 16px;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
@@ -128,7 +116,7 @@
 .card {
   background: var(--surface);
   border: 1px solid var(--rule);
-  border-radius: 2px;
+  border-radius: 8px;
 }
 
 .card-hover {
@@ -148,7 +136,7 @@
   justify-content: center;
   gap: 0.4rem;
   min-height: 44px;
-  border-radius: 2px;
+  border-radius: 7px;
   font-weight: 600;
   font-size: 14px;
   line-height: 1;
@@ -181,7 +169,8 @@
 }
 
 .btn-secondary:hover {
-  border-color: var(--fg);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .btn-ghost {
@@ -201,7 +190,7 @@
 .field {
   width: 100%;
   min-height: 46px;
-  border-radius: 2px;
+  border-radius: 7px;
   border: 1px solid var(--rule-strong);
   background: var(--surface);
   padding: 0.55rem 0.8rem;
@@ -222,13 +211,12 @@
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  border-radius: 2px;
+  border-radius: 5px;
   border: 1px solid var(--rule);
   background: var(--surface);
   padding: 0.2rem 0.65rem;
-  font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 500;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
   letter-spacing: 0.01em;
   color: var(--muted);
 }
@@ -240,19 +228,19 @@
 }
 
 .eyebrow {
-  font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
 .section-label {
-  font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -261,41 +249,52 @@
   font-family: var(--font-display);
 }
 
-/* Long-form article body — /blog/[slug] and /about opt into this. */
-/* Centred, and set in the serif. It was 68ch pinned to the LEFT of a 1280px
- * shell, which left 543px of dead page beside every paragraph — 45% of a 1440px
- * viewport, and the first thing the owner pointed at. The width freed up here is
- * spent on figures that own the full column (.artifact below), never on a
- * sidebar of tags or a subscribe box. */
+/*
+ * Long-form article body — /blog/[slug] and /about opt into this. Centred, and
+ * set in the SANS body face, not the display mono: a display face carries a
+ * headline, not a paragraph. It was 68ch pinned to the LEFT of a 1280px shell
+ * before, which left 543px of dead page beside every paragraph. The width
+ * freed up here goes to figures that own the full column (.artifact below),
+ * never a sidebar of tags or a subscribe box.
+ */
 .prose {
   max-width: var(--measure);
   margin-inline: auto;
-  font-family: var(--font-display);
-  font-size: 19px;
-  line-height: 1.62;
+  font-family: var(--font-sans);
+  font-size: 17.5px;
+  line-height: 1.68;
 }
 
 .prose > * + * {
   margin-top: 1.15em;
 }
 
+/* In-body section headers are a mono uppercase label, not a second display
+ * size — structure as information: a reader scanning for the next section
+ * sees a data-shaped marker, consistent with the table headers and metadata
+ * strip elsewhere on the same page. */
 .prose h2 {
   margin-top: 2.3em;
-  font-family: var(--font-display);
-  font-size: 1.55em;
-  font-weight: 600;
-  letter-spacing: -0.015em;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .prose h3 {
   margin-top: 1.9em;
-  font-family: var(--font-display);
-  font-size: 1.2em;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .prose a {
-  color: var(--accent-strong);
+  color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 2px;
   text-decoration-thickness: 1px;
@@ -315,7 +314,7 @@
  * whole sentence. Plain font-weight:bold doesn't do that; needs real contrast.
  */
 .prose strong {
-  color: var(--accent-strong);
+  color: var(--fg);
   font-weight: 700;
   background: linear-gradient(to bottom, transparent 70%, var(--accent-tint) 70%);
   padding: 0 0.05em;
@@ -422,111 +421,27 @@
   }
 }
 
-
 /* ---------------------------------------------------------------------- */
-/* The plate — signature object of the Reproduction Log.                   */
-/*                                                                         */
-/* Reproduction status outranks severity, visually and in the DOM. A        */
-/* security engineer parses "reproduced / not reproduced / not attempted"   */
-/* faster and more usefully than a CVSS number, and it is the one field no  */
-/* competitor can fill.                                                    */
-/*                                                                         */
-/* Each state differs in BORDER STYLE as well as weight, never colour       */
-/* alone — a status system encoded only in hue disappears for a colourblind */
-/* reader and in print. --alarm deliberately does not appear here: red is   */
-/* reserved for "unpatched", and an unreproduced finding is not a danger    */
-/* state, it is an honesty state.                                          */
+/* The figure owns the full column at the sentence it explains, and the    */
+/* paragraph after it is written as if the reader already looked.         */
 /* ---------------------------------------------------------------------- */
-.plate {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.4rem 0.65rem;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.055em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.plate .plate-dot {
-  width: 5px;
-  height: 5px;
-  flex: none;
-}
-
-.plate .plate-meta {
-  color: var(--muted);
-}
-
-.plate-lg {
-  font-size: 12.5px;
-  padding: 0.65rem 0.9rem;
-  gap: 0.75rem;
-}
-
-.plate-lg .plate-dot {
-  width: 7px;
-  height: 7px;
-}
-
-/* Reproduced — solid box, solid dot. The strongest claim on the site. */
-.plate-reproduced {
-  border: 1px solid var(--fg);
-  color: var(--fg);
-}
-.plate-reproduced .plate-dot {
-  background: var(--fg);
-}
-
-/* Vendor-confirmed — solid, offset shadow. Someone else vouched. */
-.plate-vendor {
-  border: 1px solid var(--muted);
-  color: var(--fg);
-  box-shadow: 3px 3px 0 var(--surface-2);
-}
-.plate-vendor .plate-dot {
-  background: var(--muted);
-}
-
-/* Not reproduced — dashed. Tried, and it did not happen. */
-.plate-not-reproduced {
-  border: 1px dashed var(--muted);
-  color: var(--muted);
-}
-.plate-not-reproduced .plate-dot {
-  border: 1px solid var(--muted);
-}
-
-/* Not attempted — dotted, lightest. Honest about the gap. */
-.plate-not-attempted {
-  border: 1px dotted var(--rule-strong);
-  color: var(--rule-strong);
-}
-.plate-not-attempted .plate-dot {
-  border: 1px dotted var(--rule-strong);
-}
-
-/* The figure owns the full column at the sentence it explains, and the
- * paragraph after it is written as if the reader already looked. */
 .artifact {
   max-width: 860px;
   margin: 2.25rem auto;
 }
 
 .artifact-cap {
-  font-family: var(--font-sans);
+  font-family: var(--font-mono);
   font-size: 10.5px;
-  font-weight: 600;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.11em;
   color: var(--muted);
   margin-bottom: 0.7rem;
 }
 
-/* Version strings, identifiers and dates. Tabular so ranges align down a
- * column — the thing GitHub's advisory pages get wrong. */
+/* Version strings, identifiers, dates, table data. Tabular so numbers align
+ * down a column. */
 .ver {
   font-family: var(--font-mono);
   font-size: 12.5px;
@@ -534,9 +449,296 @@
   white-space: nowrap;
 }
 
-
 /* Every block on a record shares this. Figures opt out via .artifact. */
 .measure {
   max-width: var(--measure);
   margin-inline: auto;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Scope block — the signature object of the redesign.                     */
+/*                                                                         */
+/* Not the ⌘K palette (Linear, Raycast and Vercel already have that — it's  */
+/* table stakes for "tool," not a memorable thing) and not a reproduction-  */
+/* status chip (that concept belonged to the agent-security framing this    */
+/* site no longer has). The signature is the promise and the limit of an    */
+/* entry, stated before the reader invests the read: what they'll be able   */
+/* to do afterward, and what the entry deliberately does not cover.         */
+/*                                                                         */
+/* Grounded in docs/voice-guide.md's confirmed rule — state what doesn't    */
+/* hold, then move on, no cushioning — and in the site's one job: teaching. */
+/* ---------------------------------------------------------------------- */
+.scope {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--fg);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.scope > div {
+  padding: 14px 16px;
+}
+
+.scope > div + div {
+  border-left: 1px solid var(--rule-strong);
+  background: var(--surface-2);
+}
+
+.scope h4 {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 0 0 9px;
+  color: var(--fg);
+}
+
+.scope > div + div h4 {
+  color: var(--muted);
+}
+
+.scope ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.scope li {
+  font-size: 13.5px;
+  line-height: 1.48;
+  padding-left: 15px;
+  position: relative;
+  color: var(--fg);
+}
+
+.scope li + li {
+  margin-top: 6px;
+}
+
+.scope li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 7px;
+  height: 1.5px;
+  background: var(--accent);
+}
+
+.scope > div + div li {
+  color: var(--muted);
+}
+
+.scope > div + div li::before {
+  background: var(--rule-strong);
+}
+
+@media (max-width: 640px) {
+  .scope {
+    grid-template-columns: 1fr;
+  }
+
+  .scope > div + div {
+    border-left: 0;
+    border-top: 1px solid var(--rule-strong);
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Stat tiles — the homepage/index header. Replaces the Census bar's        */
+/* reproduction-state counts (retired with the rest of that concept) with   */
+/* per-pillar entry counts. Computed from real posts, never sample data —   */
+/* an invented number on a site whose whole pitch is "I actually did this"  */
+/* would be the worst possible place to fake something.                    */
+/* ---------------------------------------------------------------------- */
+.tiles {
+  display: flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--rule);
+  gap: 1px;
+}
+
+.tiles > div {
+  background: var(--surface);
+  padding: 10px 16px;
+  flex: 1;
+  min-width: 108px;
+}
+
+.tiles .tile-k {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tiles .tile-v {
+  font-family: var(--font-mono);
+  font-size: 19px;
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Entry table — the index. A table because comparison across rows is the  */
+/* job: which entry, which pillar, how it was made, when. The record page   */
+/* uses a label/value strip instead (see the <dl> in blog/[slug]/page.tsx), */
+/* since a single record has only one row and nothing to compare.          */
+/* ---------------------------------------------------------------------- */
+.entry-table-wrap {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.entry-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.entry-table th {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--muted);
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule-strong);
+  font-weight: 500;
+  background: var(--surface-2);
+  white-space: nowrap;
+}
+
+.entry-table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+
+.entry-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.entry-table tbody tr {
+  transition: background-color 150ms ease;
+}
+
+.entry-table tbody tr:hover td {
+  background: var(--surface-2);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Command palette (⌘K) — the keyboard-first search. See                   */
+/* components/CommandPalette.tsx for behaviour.                            */
+/* ---------------------------------------------------------------------- */
+.kbd {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  border: 1px solid var(--rule-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--muted);
+  background: var(--surface);
+}
+
+.cmdk-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 41, 0.34);
+  z-index: 60;
+}
+
+.cmdk-panel {
+  position: fixed;
+  left: 50%;
+  top: 14vh;
+  transform: translateX(-50%);
+  width: min(620px, 92vw);
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: 11px;
+  z-index: 61;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(15, 23, 41, 0.22);
+}
+
+.cmdk-input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  padding: 15px 17px;
+  font-family: var(--font-mono);
+  font-size: 14.5px;
+  background: transparent;
+  color: var(--fg);
+  outline: none;
+}
+
+.cmdk-input::placeholder {
+  color: var(--muted);
+}
+
+.cmdk-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: 46vh;
+  overflow: auto;
+}
+
+.cmdk-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  padding: 9px 11px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.cmdk-item[data-active="true"] {
+  background: var(--accent-tint);
+}
+
+.cmdk-item .t {
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cmdk-item .g {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.cmdk-foot {
+  border-top: 1px solid var(--rule);
+  padding: 8px 13px;
+  display: flex;
+  gap: 14px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.cmdk-empty {
+  padding: 22px 17px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--muted);
 }
