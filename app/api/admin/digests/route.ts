@@ -1,14 +1,21 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { digests } from "@/db/schema";
+import { digests, posts, researchRuns } from "@/db/schema";
+import { assertNoFabricatedExperience } from "@/lib/content/frontmatter";
 import { getDb } from "@/lib/db";
-import { extractQueryRows, isDigestPublishable } from "@/lib/editorial-safety";
+import { buildDigestPublishStatement } from "@/lib/digest-publish";
+import {
+  deriveSourceStatus,
+  extractQueryRows,
+  isDigestPublishable,
+} from "@/lib/editorial-safety";
 import { env } from "@/lib/env";
 import { submitUrls } from "@/lib/indexnow";
 import { FEED_CACHE_TAG } from "@/lib/queries";
+import { parseStoredFindings, type Finding } from "@/lib/research";
 import { reviewBlockingIssues } from "@/lib/review";
 import { AUTHOR_NAME } from "@/lib/site";
 
@@ -42,20 +49,38 @@ export async function POST(request: Request) {
   }
 
   if (action === "reject") {
+    if (digest.status === "rejected") {
+      return NextResponse.json({ ok: true, status: "rejected", idempotent: true });
+    }
+
     const [claimed] = await db
       .update(digests)
       .set({ status: "rejected", error: "rejected by human review", updatedAt: new Date() })
-      .where(
-        and(
-          eq(digests.id, id),
-          inArray(digests.status, ["pending_review", "approved"]),
-        ),
-      )
+      .where(and(eq(digests.id, id), eq(digests.status, "pending_review")))
       .returning({ id: digests.id });
     if (!claimed) {
+      const [terminal] = await db
+        .select({ status: digests.status })
+        .from(digests)
+        .where(eq(digests.id, id))
+        .limit(1);
+      if (terminal?.status === "rejected") {
+        return NextResponse.json({ ok: true, status: "rejected", idempotent: true });
+      }
       return NextResponse.json({ error: "Digest is not pending_review (already actioned?)" }, { status: 409 });
     }
     return NextResponse.json({ ok: true, status: "rejected" });
+  }
+
+  if (digest.status === "published") {
+    return NextResponse.json({
+      ok: true,
+      status: "published",
+      slug: digest.blogPostSlug,
+      emailSent: Boolean(digest.emailSentAt),
+      emailError: null,
+      idempotent: true,
+    });
   }
 
   if (!isDigestPublishable(digest.status)) {
@@ -73,6 +98,63 @@ export async function POST(request: Request) {
   if (!digest.blogPostSlug) {
     return NextResponse.json({ error: "Digest has no associated post — cannot approve" }, { status: 409 });
   }
+
+  const [[postDraft], [researchRun]] = await Promise.all([
+    db
+      .select({
+        title: posts.title,
+        dek: posts.dek,
+        origin: posts.origin,
+        body: posts.body,
+      })
+      .from(posts)
+      .where(eq(posts.slug, digest.blogPostSlug))
+      .limit(1),
+    db
+      .select({ findings: researchRuns.findings })
+      .from(researchRuns)
+      .where(eq(researchRuns.digestId, digest.id))
+      .limit(1),
+  ]);
+
+  if (!postDraft?.body) {
+    return NextResponse.json(
+      { error: `Post "${digest.blogPostSlug}" no longer exists or has no body.` },
+      { status: 409 },
+    );
+  }
+
+  const postOrigin =
+    postDraft.origin === "human" ||
+    postDraft.origin === "ai_assisted" ||
+    postDraft.origin === "ai_generated"
+      ? postDraft.origin
+      : "ai_generated";
+
+  let findings: Finding[];
+  try {
+    findings = parseStoredFindings(researchRun?.findings);
+    assertNoFabricatedExperience(
+      {
+        title: postDraft.title,
+        dek: postDraft.dek ?? "",
+        origin: postOrigin,
+      },
+      postDraft.body,
+      `posts/${digest.blogPostSlug} (approval gate)`,
+    );
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "The draft failed deterministic editorial validation.",
+      },
+      { status: 409 },
+    );
+  }
+  const sourceStatus = deriveSourceStatus(findings.flatMap((finding) => finding.sourceUrls));
 
   const now = new Date();
 
@@ -95,39 +177,33 @@ export async function POST(request: Request) {
 
   // One Postgres statement updates both facts. If the request dies, both remain
   // unchanged or both commit; a legacy `approved` row can safely retry this path.
-  const result = await db.execute(sql`
-    with eligible as (
-      select id, blog_post_slug
-        from digests
-       where id = ${id}
-         and status in ('pending_review', 'approved')
-         and blog_post_slug is not null
-    ), published_post as (
-      update posts
-         set draft = false,
-             authenticity_status = 'verified',
-             reviewed_by = ${REVIEWER_NAME},
-             reviewed_at = ${now},
-             published_at = ${editorialDate},
-             updated_at = ${now}
-        from eligible
-       where posts.slug = eligible.blog_post_slug
-      returning posts.slug, eligible.id as digest_id
-    )
-    update digests
-       set status = 'published',
-           published_at = ${now},
-           reviewed_by = ${REVIEWER_NAME},
-           reviewed_at = ${now},
-           error = null,
-           updated_at = ${now}
-      from published_post
-     where digests.id = published_post.digest_id
-    returning published_post.slug
-  `);
+  const result = await db.execute(
+    buildDigestPublishStatement({
+      id,
+      reviewerName: REVIEWER_NAME,
+      now,
+      editorialDate,
+      sourceStatus,
+    }),
+  );
   const [published] = extractQueryRows<{ slug: string }>(result);
 
   if (!published) {
+    const [terminal] = await db
+      .select({ status: digests.status, blogPostSlug: digests.blogPostSlug, emailSentAt: digests.emailSentAt })
+      .from(digests)
+      .where(eq(digests.id, id))
+      .limit(1);
+    if (terminal?.status === "published") {
+      return NextResponse.json({
+        ok: true,
+        status: "published",
+        slug: terminal.blogPostSlug,
+        emailSent: Boolean(terminal.emailSentAt),
+        emailError: null,
+        idempotent: true,
+      });
+    }
     return NextResponse.json(
       { error: `Post "${digest.blogPostSlug}" no longer exists or the digest was already actioned.` },
       { status: 409 },

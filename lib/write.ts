@@ -5,6 +5,7 @@ import { PILLAR_SLUGS, type PillarSlug } from "@/lib/pillars";
 import type { Finding } from "@/lib/research";
 import type { StockQuote } from "@/lib/stocks";
 import { env } from "@/lib/env";
+import { httpUrlSchema } from "@/lib/editorial-safety";
 
 /**
  * WRITE stage (Sonnet 5) — turns RESEARCH's grounded findings into the day's post and
@@ -59,7 +60,7 @@ const writeOutputSchema = z.object({
    * match a database query does perfectly and an LLM review pass might not catch.
    */
   emailHighlights: z
-    .array(z.object({ title: z.string().min(1), oneLiner: z.string().min(1), url: z.string().url() }))
+    .array(z.object({ title: z.string().min(1), oneLiner: z.string().min(1), url: httpUrlSchema }))
     .min(1)
     .max(6),
 });

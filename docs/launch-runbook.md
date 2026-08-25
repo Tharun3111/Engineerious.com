@@ -24,14 +24,12 @@ POST to `/api/submit` also returns 404 while the gate is closed.
 
 ## Newsletter
 
-Subscriber capture and sending run on Resend (`lib/resend.ts`), not beehiiv — beehiiv's
-programmatic send capability is gated behind a paid plan regardless of subscriber
-count, so it's kept only as an optional passive signup embed
-(`NEXT_PUBLIC_BEEHIIV_EMBED_URL`). `/api/subscribe` requires `RESEND_API_KEY`,
-`RESEND_SEGMENT_ID`, and `RESEND_FROM_ADDRESS` — without them it returns a clear 503
-rather than silently failing. Sending is triggered by approving the day's digest in
-`/admin`, not by a separate manual "send" step (see the daily-digest pipeline once
-it's built — this doc will be updated when that lands).
+Postgres is the subscriber source of truth. Resend (`lib/resend.ts`) is optional for
+contact sync and delivery; a valid signup is still captured when Resend is absent or
+temporarily unavailable. Beehiiv remains only an optional passive embed
+(`NEXT_PUBLIC_BEEHIIV_EMBED_URL`). Approving a digest publishes the web artifact only.
+Newsletter delivery requires its own reviewed, idempotent action; it is never coupled
+to web approval.
 
 ## Distribution (LinkedIn + Instagram)
 

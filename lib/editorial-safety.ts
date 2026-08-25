@@ -1,4 +1,5 @@
 import type { DigestStatus } from "@/db/schema";
+import { z } from "zod";
 
 export type ContentSourceStatus = "primary" | "secondary" | "mixed";
 
@@ -46,12 +47,30 @@ function isPrimarySourceUrl(raw: string): boolean {
   }
 }
 
+export function isHttpUrl(raw: string): boolean {
+  try {
+    const protocol = new URL(raw).protocol;
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export const httpUrlSchema = z
+  .string()
+  .url()
+  .refine(isHttpUrl, { message: "URL must use http:// or https://" });
+
 /** Exact-membership check: generated stages may select URLs, never create them. */
 export function assertUrlsAllowed(
   candidateUrls: readonly string[],
   allowedUrls: readonly string[],
   label: string,
 ): void {
+  const unsafe = [...new Set(candidateUrls.filter((url) => !isHttpUrl(url)))];
+  if (unsafe.length > 0) {
+    throw new Error(`${label} included non-HTTP URL(s): ${unsafe.join(", ")}`);
+  }
   const allowed = new Set(allowedUrls);
   const rejected = [...new Set(candidateUrls.filter((url) => !allowed.has(url)))];
   if (rejected.length === 0) return;

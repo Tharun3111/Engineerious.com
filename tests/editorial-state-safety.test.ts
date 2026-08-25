@@ -50,6 +50,19 @@ describe("editorial state safety", () => {
     ).toThrow();
   });
 
+  it("rejects non-HTTP schemes even when they appear in the gathered allowlist", () => {
+    for (const unsafe of [
+      "javascript:alert(1)",
+      "data:text/html,unsafe",
+      "mailto:editor@example.com",
+      "ftp://example.com/file",
+    ]) {
+      expect(() => assertUrlsAllowed([unsafe], [unsafe], "research findings")).toThrow(
+        /non-HTTP URL/,
+      );
+    }
+  });
+
   it("derives conservative source status from source URLs", () => {
     expect(
       deriveSourceStatus([

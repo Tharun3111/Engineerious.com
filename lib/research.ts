@@ -3,7 +3,7 @@ import { z } from "zod";
 import { complete } from "@/lib/llm";
 import type { Item } from "@/db/schema";
 import type { GatherResult } from "@/lib/adapters/tavily";
-import { assertUrlsAllowed } from "@/lib/editorial-safety";
+import { assertUrlsAllowed, httpUrlSchema } from "@/lib/editorial-safety";
 import type { StockQuote } from "@/lib/stocks";
 
 /**
@@ -17,7 +17,7 @@ import type { StockQuote } from "@/lib/stocks";
 export const findingSchema = z.object({
   title: z.string(),
   summary: z.string(),
-  sourceUrls: z.array(z.string().url()).min(1),
+  sourceUrls: z.array(httpUrlSchema).min(1),
   category: z.enum(["model_release", "research", "tool_framework", "incident", "industry_news", "technique"]),
   novelty: z.enum(["high", "medium", "low"]),
   relevantPillar: z.enum(["eval-first", "mcp", "rag-mlops"]).nullable().optional(),
