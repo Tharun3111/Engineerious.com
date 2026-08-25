@@ -24,31 +24,43 @@ const ROUTES = [
   { path: "/models", expect: 404 },
   { path: "/news/1", expect: 404 },
   { path: "/models/anything", expect: 404 },
-  { path: "/blog", feed: true, contains: "Everything I’ve learned about AI, written down as I learned it." },
-  // Gated by PUBLIC_RESEARCH_ENABLED (middleware.ts + lib/public-launch.ts). This
-  // list assumes the flag is "true" (the current default — see docs/launch-runbook.md).
-  // Set QA_GATE_CLOSED=true when checking a deployment with the flag off.
+  // Placeholder library: unlike the deferred routes below, this stays shut even
+  // when PUBLIC_RESEARCH_ENABLED=true.
+  { path: "/resources", expect: 404 },
+  { path: "/blog" },
+  { path: "/archive" },
+  // Gated by PUBLIC_RESEARCH_ENABLED (proxy.ts + lib/public-launch.ts). This
+  // list assumes the deployment under test has the same state as QA_GATE_CLOSED.
   ...(process.env.QA_GATE_CLOSED === "true"
     ? [
         { path: "/open-source", expect: 404 },
-        { path: "/resources", expect: 404 },
         { path: "/pillars/eval-first", expect: 404 },
         { path: "/submit", expect: 404 },
+        { path: "/api/submit", method: "POST", body: {}, expect: 404 },
       ]
     : [
         { path: "/open-source", contains: "Open-source releases worth evaluating." },
-        { path: "/resources", contains: "Guides and templates for reliable AI systems" },
         { path: "/pillars/eval-first" },
         { path: "/submit", contains: "Suggest a link for review" },
+        // Invalid input proves the endpoint is reachable without writing a row.
+        { path: "/api/submit", method: "POST", body: {}, expect: 400 },
       ]),
   { path: "/about", newsletter: true },
   { path: "/subscribe", newsletter: true },
   { path: "/rss.xml", contains: "<rss" },
-  { path: "/sitemap.xml", contains: "<urlset" },
+  {
+    path: "/sitemap.xml",
+    contains: "<urlset",
+    excludes: ["/news", "/models", "/resources", "/submit"],
+  },
   { path: "/robots.txt", contains: "Sitemap:" },
   { path: "/admin", expectOneOf: [401, 503] },
   { path: "/api/cron/news", expect: 401 },
+  { path: "/api/cron/models", expect: 401 },
+  { path: "/api/cron/oss", expect: 401 },
   { path: "/api/cron/rank", expect: 401 },
+  { path: "/api/cron/daily-digest", expect: 401 },
+  { path: "/api/cron/daily-write", expect: 401 },
 ];
 
 const failures = [];
@@ -63,7 +75,12 @@ for (const route of ROUTES) {
   const started = Date.now();
 
   try {
-    res = await fetch(url, { redirect: "manual" });
+    res = await fetch(url, {
+      redirect: "manual",
+      method: route.method ?? "GET",
+      headers: route.body === undefined ? undefined : { "content-type": "application/json" },
+      body: route.body === undefined ? undefined : JSON.stringify(route.body),
+    });
     html = await res.text();
   } catch (error) {
     failures.push(`${route.path} — request failed: ${error.message}`);
@@ -86,6 +103,14 @@ for (const route of ROUTES) {
   if (route.contains && !html.includes(route.contains)) {
     failures.push(`${route.path} — missing expected content: ${route.contains}`);
     continue;
+  }
+
+  if (route.excludes) {
+    const leaked = route.excludes.find((value) => html.includes(value));
+    if (leaked) {
+      failures.push(`${route.path} — unexpectedly contains closed path: ${leaked}`);
+      continue;
+    }
   }
 
   if (route.feed) {

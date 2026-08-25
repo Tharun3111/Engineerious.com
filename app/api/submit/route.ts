@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { submissions } from "@/db/schema";
 import { getDb } from "@/lib/db";
+import { shouldCloseResearchPath } from "@/lib/public-launch";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,16 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  // /api routes are excluded from the broad middleware matcher. Enforce the same
+  // launch boundary at the mutation itself so a caller cannot bypass the closed
+  // /submit page with a direct POST.
+  if (shouldCloseResearchPath("/submit", process.env.PUBLIC_RESEARCH_ENABLED)) {
+    return NextResponse.json(
+      { ok: false, error: "Not found." },
+      { status: 404, headers: { "X-Robots-Tag": "noindex, nofollow" } },
+    );
+  }
+
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json(

@@ -28,6 +28,9 @@
    * not spent on content classification. The old palette burned red on
    * "unpatched," which doesn't exist as a concept here any more. */
   --alarm: #b3261e;
+  --positive: #176b45;
+  --positive-tint: #e8f5ee;
+  --negative: #9b2c1f;
   --ring: var(--accent);
 
   /* One reading measure for the whole site, in rem not ch — `ch` is relative to
@@ -50,6 +53,9 @@
   --color-accent-tint: var(--accent-tint);
   --color-accent-fg: var(--accent-fg);
   --color-alarm: var(--alarm);
+  --color-positive: var(--positive);
+  --color-positive-tint: var(--positive-tint);
+  --color-negative: var(--negative);
   --color-ring: var(--ring);
 
   /* Three roles, hard budget — the register Tharun picked is "dense, technical,
@@ -275,22 +281,22 @@
  * strip elsewhere on the same page. */
 .prose h2 {
   margin-top: 2.3em;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 25px;
+  font-weight: 680;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: var(--fg);
 }
 
 .prose h3 {
   margin-top: 1.9em;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 19px;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--fg);
 }
 
 .prose a {
@@ -486,7 +492,7 @@
   background: var(--surface-2);
 }
 
-.scope h4 {
+.scope-title {
   font-family: var(--font-mono);
   font-size: 9.5px;
   font-weight: 500;
@@ -496,7 +502,7 @@
   color: var(--fg);
 }
 
-.scope > div + div h4 {
+.scope > div + div .scope-title {
   color: var(--muted);
 }
 
@@ -596,7 +602,10 @@
 .entry-table-wrap {
   border: 1px solid var(--rule);
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
   background: var(--surface);
 }
 
@@ -674,6 +683,38 @@
   box-shadow: 0 20px 60px rgba(15, 23, 41, 0.22);
 }
 
+.cmdk-head {
+  min-height: 44px;
+  padding: 8px 10px 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.cmdk-head label {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--fg);
+}
+
+.cmdk-close {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 6px;
+  padding-inline: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.cmdk-close:hover {
+  color: var(--accent);
+  background: var(--surface-2);
+}
+
 .cmdk-input {
   width: 100%;
   border: 0;
@@ -699,12 +740,20 @@
 }
 
 .cmdk-item {
+  padding: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.cmdk-item button {
+  width: 100%;
+  min-height: 44px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 11px;
   align-items: center;
   padding: 9px 11px;
-  border-radius: 6px;
+  text-align: left;
   cursor: pointer;
 }
 

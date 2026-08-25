@@ -15,7 +15,7 @@ const bodySchema = z.object({
   action: z.enum(["approve", "reject"]),
 });
 
-/** Moderate an ingested item. Gated by middleware.ts. */
+/** Moderate an ingested item. Gated by proxy.ts. */
 export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   if (updated.length === 0) return NextResponse.json({ error: "No such item" }, { status: 404 });
 
   // An approval must show up on the feeds immediately, not in five minutes.
-  revalidateTag(FEED_CACHE_TAG);
+  revalidateTag(FEED_CACHE_TAG, "max");
 
   return NextResponse.json({ ok: true, ...updated[0] });
 }

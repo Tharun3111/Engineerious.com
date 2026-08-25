@@ -60,6 +60,7 @@ export const digestStatusEnum = pgEnum("digest_status", [
   "pending_review",
   "approved",
   "published",
+  "rejected",
   "failed",
 ]);
 

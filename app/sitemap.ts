@@ -10,9 +10,10 @@ import { PILLAR_SLUGS } from "@/lib/pillars";
  * they are thin permalinks around an outbound link, and indexing tens of thousands of
  * them is how an aggregator earns a thin-content penalty.
  *
- * /open-source, /resources, /submit track the same PUBLIC_RESEARCH_ENABLED gate as
- * middleware.ts and app/robots.ts — listing a 404ing path here would just teach
- * crawlers to distrust the sitemap.
+ * /open-source and pillar pages track the same PUBLIC_RESEARCH_ENABLED gate as
+ * proxy.ts and app/robots.ts. /resources is deliberately absent even when
+ * the gate is on: it is placeholder content and is always closed. /submit is a
+ * utility form, not a search landing page.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const site = env.siteUrl.replace(/\/$/, "");
@@ -23,8 +24,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const gated: MetadataRoute.Sitemap = env.publicResearchEnabled
     ? [
         { url: `${site}/open-source`, lastModified: now, changeFrequency: "daily" as const, priority: 0.7 },
-        { url: `${site}/resources`, lastModified: now, changeFrequency: "daily" as const, priority: 0.7 },
-        { url: `${site}/submit`, lastModified: now, changeFrequency: "yearly" as const, priority: 0.3 },
         ...PILLAR_SLUGS.map((slug) => ({
           url: `${site}/pillars/${slug}`,
           lastModified: now,

@@ -1,16 +1,21 @@
 # Engineerious
 
-A fast, text-first AI content portal in the Hacker News / YC mould, plus a personal-brand blog and a
-semi-automated content-repurposing pipeline.
+A text-first AI engineering desk: reviewed intelligence, technical writing, and a
+semi-automated research pipeline under Tharun Chowdary Malepati's byline.
 
 Four content types:
 
 | Section | Route | Sources |
 | --- | --- | --- |
-| AI News | `/news` | Lab RSS (OpenAI, Google Research, DeepMind, Meta Engineering, Hugging Face), practitioner press, arXiv, Hacker News, optional commercial news API |
-| AI Models | `/models` | Hugging Face Hub API — recent, popular, and best-effort trending |
-| Open Source | `/open-source` | GitHub Search + Releases, optional Product Hunt |
-| Blog | `/blog` | MDX in `content/blog`, organised by three pillars |
+| AI News | `/news` | Ingestion continues; the uncurated public route is closed |
+| AI Models | `/models` | Ingestion continues; the uncurated public route is closed |
+| Open Source | `/open-source` | Approved GitHub releases; gated by `PUBLIC_RESEARCH_ENABLED` |
+| Blog | `/blog` | Verified MDX and reviewed database-native writing |
+
+`/resources` is always closed while it contains placeholders. `/submit` and pillar
+routes use the same research launch gate as Open Source. Closed content is filtered
+from Archive data and omitted from the sitemap; route middleware is not the only
+visibility boundary.
 
 Everything is ranked with the Hacker News formula from Paul Graham's `news.arc`:
 
@@ -25,11 +30,11 @@ added later without changing the formula.
 
 ## Stack
 
-- **Next.js 15** (App Router, RSC, ISR) + TypeScript + Tailwind v4
+- **Next.js 16** (App Router, RSC, ISR) + React 19.2, TypeScript, and Tailwind v4
 - **Neon** serverless Postgres via **Drizzle ORM**
 - **Vercel** hosting + Vercel Cron for ingestion
 - **MDX on disk** for the blog (typed frontmatter, validated with Zod)
-- **beehiiv** for the newsletter, **Buffer** (or Ayrshare) for social scheduling
+- Postgres-backed subscriptions with optional **Resend** delivery; social drafts stay manual
 - **gstack** `/browse` + `/qa` as the pre-deploy verification layer
 
 ---
@@ -50,9 +55,9 @@ Then populate the feeds:
 npm run cron:all               # hits every /api/cron/* route against localhost:3000
 ```
 
-Visit <http://localhost:3000>. Three example posts (one per pillar) are already in
-`content/blog/` — **replace them before launch**; they are written in the house voice but they are
-scaffolding, not your work.
+Visit <http://localhost:3000>. `content/blog/` is intentionally not populated with
+fabricated example experience; add only writing whose claims and provenance can be
+verified.
 
 ---
 
@@ -77,9 +82,8 @@ unconfigured and is skipped.
 | `PRODUCTHUNT_TOKEN` | Product Hunt adapter skipped |
 | `NEWS_API_PROVIDER` / `NEWS_API_KEY` | Commercial news fill-in skipped |
 | `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | `/api/repurpose` returns 503 |
-| `BUFFER_TOKEN` (+ `BUFFER_CHANNEL_*`) | Approvals fall back to a no-op dry run |
-| `BEEHIIV_API_KEY` / `BEEHIIV_PUBLICATION_ID` | `/api/subscribe` returns a clear 503 |
-| `INGEST_REQUIRE_APPROVAL` | Defaults to `false` — ingested items publish immediately |
+| `RESEND_API_KEY` / `RESEND_SEGMENT_ID` | Signups still persist in Postgres; delivery is unavailable |
+| `INGEST_REQUIRE_APPROVAL` | Defaults to review-first; set `false` only for private fixtures |
 
 ---
 
@@ -106,31 +110,26 @@ unconfigured and is skipped.
 
 **Likely paid line items**
 
-- Vercel Pro (~$20/mo) if you want true hourly news ingestion — see below.
-- A social posting API (Buffer from ~$6/mo per channel; Ayrshare higher, more platforms).
 - LLM spend for repurposing and "why it matters" notes — small, but non-zero.
 
 ---
 
 ## Cron schedule
 
-`vercel.json` ships the **Pro** schedule:
+`vercel.json` intentionally ships a once-daily schedule:
 
 | Route | Schedule |
 | --- | --- |
-| `/api/cron/news` | hourly |
-| `/api/cron/models` | daily 06:15 UTC |
-| `/api/cron/oss` | daily 06:30 UTC |
-| `/api/cron/rank` | every 15 minutes |
+| `/api/cron/news` | 08:00 UTC daily |
+| `/api/cron/models` | 08:15 UTC daily |
+| `/api/cron/oss` | 08:30 UTC daily |
+| `/api/cron/rank` | 08:45 UTC daily |
+| `/api/cron/daily-digest` | 09:00 UTC daily |
+| `/api/cron/daily-write` | 09:20 UTC daily |
 
-**On the Hobby plan this will not run as written.** Hobby allows a small number of cron jobs at
-**once per day**, with loose timing. Options:
-
-1. Upgrade to Pro (simplest, ~$20/mo).
-2. Trim `vercel.json` to daily schedules and accept daily freshness.
-3. Keep the routes and drive them from an external scheduler — a GitHub Actions cron, Inngest, or
-   Trigger.dev — hitting `https://<your-domain>/api/cron/<feed>` with
-   `Authorization: Bearer $CRON_SECRET`.
+Confirm the number of configured jobs against the limits of the Vercel plan used for
+the project. The same routes can also be driven by an external scheduler with
+`Authorization: Bearer $CRON_SECRET`.
 
 Vercel injects that Authorization header automatically for its own cron invocations when
 `CRON_SECRET` is set in the project.
@@ -139,7 +138,7 @@ Vercel injects that Authorization header automatically for its own cron invocati
 
 ## The repurposing pipeline
 
-One flagship post → five platform-native drafts → **you approve** → scheduled.
+One flagship post → platform-native drafts → **you approve** → manual copy-ready output.
 
 ```bash
 curl -X POST https://engineerious.com/api/repurpose \
@@ -153,11 +152,10 @@ alt text, a ~45s YouTube Shorts script, and a Facebook post — each from a per-
 `content/prompts/`, each written in the Pragmatic Practitioner voice, none of them a copy-paste of
 another.
 
-Every draft lands as `pending_review`. Review and edit them at `/admin`, then Approve to schedule
-via Buffer. Published URLs flow back onto the article's "Distributed to" row.
+Every draft lands as `pending_review`. Review and edit it at `/admin`; approval marks it
+copy-ready but does not contact a social network.
 
-**There is no auto-publish path anywhere in this codebase, by design.** Approving in `/admin` is the
-only action that reaches a social account. Keep it that way.
+**There is no auto-publish path anywhere in this codebase, by design.** Keep it that way.
 
 Platform reality check: Meta (Instagram/Facebook), LinkedIn and YouTube require app review and
 Business/Creator accounts; X moved to pay-per-request billing in February 2026. Using a unified
@@ -188,8 +186,8 @@ app/
   news|models|open-source/    section feeds + item detail routes
   blog/[slug]/                MDX article
   pillars/[pillar]/           pillar hubs
-  admin/                      approval console (HTTP Basic via middleware.ts)
-  api/cron/{news,models,oss,rank}/
+  admin/                      approval console (HTTP Basic via proxy.ts)
+  api/cron/{news,models,oss,rank,daily-digest,daily-write}/
   api/{repurpose,subscribe,submit}/
   api/admin/{items,repurpose,submissions}/
 components/                   Row, FeedList, SectionTabs, Nav, NewsletterCTA, PillarBadge, AdminQueue
@@ -197,7 +195,7 @@ lib/
   ranking.ts dedupe.ts ingest.ts queries.ts auth.ts llm.ts env.ts
   adapters/                   one file per source, all behind IngestAdapter
   content/                    MDX loader (Zod-validated frontmatter) + DB mirror
-  repurpose/                  draft generation + Publisher interface (Buffer, Ayrshare, dry-run)
+  repurpose/                  reviewed, copy-ready draft generation
 db/schema.ts                  Drizzle schema
 content/blog/*.mdx            posts
 content/prompts/*.md          per-platform repurposing templates

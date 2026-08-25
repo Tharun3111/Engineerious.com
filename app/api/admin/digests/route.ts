@@ -1,22 +1,20 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { digests, posts } from "@/db/schema";
+import { digests } from "@/db/schema";
 import { getDb } from "@/lib/db";
+import { extractQueryRows, isDigestPublishable } from "@/lib/editorial-safety";
 import { env } from "@/lib/env";
 import { submitUrls } from "@/lib/indexnow";
 import { FEED_CACHE_TAG } from "@/lib/queries";
-import { resendConfigured, sendDigest } from "@/lib/resend";
+import { reviewBlockingIssues } from "@/lib/review";
 import { AUTHOR_NAME } from "@/lib/site";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// This route now makes two outbound network calls (Resend send, IndexNow submit)
-// after the DB writes commit — give it real headroom instead of inheriting the
-// platform default (10s Hobby / 15s Pro), the shortest ceiling of any
-// network-calling route in this app despite being the highest-stakes one.
+// IndexNow is best-effort after the atomic web publication statement.
 export const maxDuration = 60;
 
 const bodySchema = z.object({
@@ -27,14 +25,8 @@ const bodySchema = z.object({
 /** Whoever is behind ADMIN_PASSWORD — this is a single-operator site, not a byline picker. */
 const REVIEWER_NAME = AUTHOR_NAME;
 
-/**
- * The one approval action, per the site's design: approving a digest publishes the
- * post AND sends the newsletter in the same request — no separate "now go click
- * send" step. This is the single highest-stakes endpoint in the codebase — the only
- * place a post goes live under a real byline or a real email goes to real
- * subscribers — so it gets the same atomic claim pattern as the cron routes, not a
- * plain select-then-write. A double-click or a retried request must not double-send.
- */
+/** Human approval publishes the web artifact only. Newsletter delivery has a
+ * separate state machine and manual action so a retry can never double-send. */
 export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
@@ -43,12 +35,22 @@ export async function POST(request: Request) {
 
   const { id, action } = parsed.data;
   const db = getDb();
+  const [digest] = await db.select().from(digests).where(eq(digests.id, id)).limit(1);
+
+  if (!digest) {
+    return NextResponse.json({ error: "Digest not found." }, { status: 404 });
+  }
 
   if (action === "reject") {
     const [claimed] = await db
       .update(digests)
-      .set({ status: "failed", error: "rejected by human review", updatedAt: new Date() })
-      .where(and(eq(digests.id, id), eq(digests.status, "pending_review")))
+      .set({ status: "rejected", error: "rejected by human review", updatedAt: new Date() })
+      .where(
+        and(
+          eq(digests.id, id),
+          inArray(digests.status, ["pending_review", "approved"]),
+        ),
+      )
       .returning({ id: digests.id });
     if (!claimed) {
       return NextResponse.json({ error: "Digest is not pending_review (already actioned?)" }, { status: 409 });
@@ -56,23 +58,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, status: "rejected" });
   }
 
-  // Claim FIRST, before any real work — 'approved' is a transient marker here, not
-  // a resting state; a concurrent second request sees 0 rows and bails immediately,
-  // before it could ever reach sendDigest().
-  const [claimed] = await db
-    .update(digests)
-    .set({ status: "approved", updatedAt: new Date() })
-    .where(and(eq(digests.id, id), eq(digests.status, "pending_review")))
-    .returning();
-  if (!claimed) {
+  if (!isDigestPublishable(digest.status)) {
     return NextResponse.json({ error: "Digest is not pending_review (already actioned?)" }, { status: 409 });
   }
 
-  if (!claimed.blogPostSlug) {
-    await db
-      .update(digests)
-      .set({ status: "failed", error: "approved but had no associated post", updatedAt: new Date() })
-      .where(eq(digests.id, id));
+  const blockers = reviewBlockingIssues(digest.reviewReport);
+  if (blockers.length > 0) {
+    return NextResponse.json(
+      { error: "Resolve the editorial review flags before publishing.", blockers },
+      { status: 409 },
+    );
+  }
+
+  if (!digest.blogPostSlug) {
     return NextResponse.json({ error: "Digest has no associated post — cannot approve" }, { status: 409 });
   }
 
@@ -93,84 +91,68 @@ export async function POST(request: Request) {
   // digests.date is Chicago-anchored (uniqueIndex, one row per day) and is what the
   // content is *about*, so it is the honest value. Noon UTC keeps the rendered
   // calendar day stable on both sides of the Chicago offset.
-  const editorialDate = new Date(`${claimed.date}T12:00:00Z`);
+  const editorialDate = new Date(`${digest.date}T12:00:00Z`);
 
-  const [publishedPost] = await db
-    .update(posts)
-    .set({
-      draft: false,
-      authenticityStatus: "verified",
-      reviewedBy: REVIEWER_NAME,
-      reviewedAt: now,
-      publishedAt: editorialDate,
-      updatedAt: now,
-    })
-    .where(eq(posts.slug, claimed.blogPostSlug))
-    .returning({ id: posts.id });
+  // One Postgres statement updates both facts. If the request dies, both remain
+  // unchanged or both commit; a legacy `approved` row can safely retry this path.
+  const result = await db.execute(sql`
+    with eligible as (
+      select id, blog_post_slug
+        from digests
+       where id = ${id}
+         and status in ('pending_review', 'approved')
+         and blog_post_slug is not null
+    ), published_post as (
+      update posts
+         set draft = false,
+             authenticity_status = 'verified',
+             reviewed_by = ${REVIEWER_NAME},
+             reviewed_at = ${now},
+             published_at = ${editorialDate},
+             updated_at = ${now}
+        from eligible
+       where posts.slug = eligible.blog_post_slug
+      returning posts.slug, eligible.id as digest_id
+    )
+    update digests
+       set status = 'published',
+           published_at = ${now},
+           reviewed_by = ${REVIEWER_NAME},
+           reviewed_at = ${now},
+           error = null,
+           updated_at = ${now}
+      from published_post
+     where digests.id = published_post.digest_id
+    returning published_post.slug
+  `);
+  const [published] = extractQueryRows<{ slug: string }>(result);
 
-  if (!publishedPost) {
-    // The post row is gone (deleted, or never existed despite the slug being set) —
-    // do NOT proceed to send an email linking to nothing. Surfaced as failed, not
-    // silently marked published.
-    await db
-      .update(digests)
-      .set({ status: "failed", error: `post "${claimed.blogPostSlug}" not found — cannot publish`, updatedAt: now })
-      .where(eq(digests.id, id));
-    return NextResponse.json({ error: `Post "${claimed.blogPostSlug}" no longer exists` }, { status: 409 });
+  if (!published) {
+    return NextResponse.json(
+      { error: `Post "${digest.blogPostSlug}" no longer exists or the digest was already actioned.` },
+      { status: 409 },
+    );
   }
 
-  let emailSentAt: Date | null = null;
-  let emailError: string | null = null;
-
-  if (claimed.emailHtml && resendConfigured()) {
-    try {
-      await sendDigest({ subject: `Engineerious — ${claimed.date}`, html: claimed.emailHtml });
-      emailSentAt = now;
-    } catch (error) {
-      emailError = error instanceof Error ? error.message : String(error);
-      console.error(`[admin/digests] email send failed for digest #${id}:`, emailError);
-    }
-  } else if (!claimed.emailHtml) {
-    emailError = "digest has no rendered email content";
-  } else {
-    emailError = "Resend is not configured";
-  }
-
-  // Publishing succeeded regardless of email outcome — the post is real, reviewed
-  // content and stays live. `error` carries the email failure forward so it's
-  // visible on the row rather than the digest just vanishing from the pending queue.
-  await db
-    .update(digests)
-    .set({
-      status: "published",
-      publishedAt: now,
-      reviewedBy: REVIEWER_NAME,
-      reviewedAt: now,
-      emailSentAt,
-      error: emailError,
-      updatedAt: now,
-    })
-    .where(eq(digests.id, id));
-
-  revalidateTag(FEED_CACHE_TAG);
+  revalidateTag(FEED_CACHE_TAG, "max");
   revalidatePath("/blog");
-  revalidatePath(`/blog/${claimed.blogPostSlug}`);
+  revalidatePath(`/blog/${digest.blogPostSlug}`);
   revalidatePath("/sitemap.xml");
   revalidatePath("/rss.xml");
   revalidatePath("/");
   revalidatePath("/archive");
-  revalidatePath(`/archive/${claimed.date}`);
+  revalidatePath(`/archive/${digest.date}`);
 
   // Best-effort — submitUrls() never throws, so this can't turn a successful
   // publish into a failed response.
   const site = env.siteUrl.replace(/\/$/, "");
-  await submitUrls([`${site}/blog/${claimed.blogPostSlug}`, `${site}/blog`, `${site}/`]);
+  await submitUrls([`${site}/blog/${digest.blogPostSlug}`, `${site}/blog`, `${site}/`]);
 
   return NextResponse.json({
     ok: true,
     status: "published",
-    slug: claimed.blogPostSlug,
-    emailSent: Boolean(emailSentAt),
-    emailError,
+    slug: digest.blogPostSlug,
+    emailSent: false,
+    emailError: null,
   });
 }

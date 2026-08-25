@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   isClosedPublicPath,
   isDeferredPublicPath,
+  isPublicItemType,
   shouldCloseResearchPath,
 } from "@/lib/public-launch";
 
@@ -21,6 +22,8 @@ describe("public launch gate", () => {
     expect(isClosedPublicPath("/news/42")).toBe(true);
     expect(isClosedPublicPath("/models")).toBe(true);
     expect(isClosedPublicPath("/models/qwen")).toBe(true);
+    expect(isClosedPublicPath("/resources")).toBe(true);
+    expect(isClosedPublicPath("/resources/eval-checklist")).toBe(true);
     expect(isClosedPublicPath("/about")).toBe(false);
     expect(isClosedPublicPath("/open-source")).toBe(false);
   });
@@ -36,7 +39,12 @@ describe("public launch gate", () => {
   });
 
   it("opens deferred routes only with an explicit true value", () => {
-    expect(shouldCloseResearchPath("/resources", "true")).toBe(false);
+    expect(shouldCloseResearchPath("/open-source", "true")).toBe(false);
+    expect(shouldCloseResearchPath("/open-source", "false")).toBe(true);
+  });
+
+  it("keeps placeholder resources shut even when the research flag is on", () => {
+    expect(shouldCloseResearchPath("/resources", "true")).toBe(true);
     expect(shouldCloseResearchPath("/resources", "false")).toBe(true);
   });
 
@@ -52,5 +60,13 @@ describe("public launch gate", () => {
       expect(shouldCloseResearchPath(open, "true")).toBe(false);
       expect(shouldCloseResearchPath(open)).toBe(false);
     }
+  });
+
+  it("exposes only open-source rows, and only behind the explicit gate", () => {
+    expect(isPublicItemType("oss", "true")).toBe(true);
+    expect(isPublicItemType("oss", "false")).toBe(false);
+    expect(isPublicItemType("oss")).toBe(false);
+    expect(isPublicItemType("news", "true")).toBe(false);
+    expect(isPublicItemType("model", "true")).toBe(false);
   });
 });

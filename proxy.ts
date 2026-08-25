@@ -10,7 +10,8 @@ import { shouldCloseResearchPath } from "@/lib/public-launch";
  * /browse can drive the authenticated screens by importing real browser cookies or
  * passing the header directly.
  *
- * Runs on the edge runtime, so no node:crypto — hence the hand-rolled comparison.
+ * Runs at the request boundary before route rendering. The comparison stays
+ * dependency-free so this file remains small and portable.
  */
 
 const REALM = 'Basic realm="Engineerious admin", charset="UTF-8"';
@@ -29,7 +30,7 @@ function unauthorized() {
   });
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   if (shouldCloseResearchPath(request.nextUrl.pathname, process.env.PUBLIC_RESEARCH_ENABLED)) {
     return new NextResponse("Not found.", {
       status: 404,

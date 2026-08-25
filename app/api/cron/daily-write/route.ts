@@ -3,9 +3,15 @@ import { NextResponse } from "next/server";
 
 import { digests, posts, researchRuns, stockQuotes as stockQuotesTable } from "@/db/schema";
 import { authorizeCron } from "@/lib/auth";
+import { assertNoFabricatedExperience } from "@/lib/content/frontmatter";
 import { getDb } from "@/lib/db";
+import {
+  assertUrlsAllowed,
+  deriveSourceStatus,
+  isDigestWriteRetryable,
+} from "@/lib/editorial-safety";
 import { reviewDaily } from "@/lib/review";
-import type { Finding } from "@/lib/research";
+import { parseStoredFindings, type Finding } from "@/lib/research";
 import type { StockQuote } from "@/lib/stocks";
 import { renderDigestEmail, writeDaily, type WriteOutput } from "@/lib/write";
 import { env } from "@/lib/env";
@@ -79,9 +85,21 @@ async function claimDigestForWrite(db: ReturnType<typeof getDb>, date: string): 
   const [run] = await db.select().from(researchRuns).where(eq(researchRuns.digestId, digest.id)).limit(1);
   if (!run) return { ok: false, reason: `research not yet done for ${date}` };
 
-  const findings = (run.findings as Finding[] | null) ?? [];
+  let findings: Finding[];
+  try {
+    findings = parseStoredFindings(run.findings);
+  } catch (error) {
+    return {
+      ok: false,
+      reason: error instanceof Error ? error.message : "stored research findings are invalid",
+    };
+  }
   if (findings.length === 0) {
     return { ok: false, reason: `research for ${date} produced zero findings — nothing to write` };
+  }
+
+  if (digest.status === "rejected") {
+    return { ok: false, reason: `digest #${digest.id} for ${date} was rejected by human review` };
   }
 
   if (digest.status === "pending_review" || digest.status === "approved" || digest.status === "published") {
@@ -106,7 +124,7 @@ async function claimDigestForWrite(db: ReturnType<typeof getDb>, date: string): 
     return { ok: true, digestId: reclaimed.id, findings, existingSlug: digest.blogPostSlug };
   }
 
-  if (digest.status === "generating" || digest.status === "failed") {
+  if (isDigestWriteRetryable(digest.status)) {
     const [claimed] = await db
       .update(digests)
       .set({ status: "writing", error: null, updatedAt: new Date() })
@@ -129,6 +147,7 @@ export async function GET(request: Request) {
   const claim = await claimDigestForWrite(db, date);
   if (!claim.ok) return NextResponse.json({ ok: true, skipped: claim.reason });
   const { digestId, findings } = claim;
+  const sourceStatus = deriveSourceStatus(findings.flatMap((finding) => finding.sourceUrls));
 
   let writeCompleted = Boolean(claim.existingSlug);
 
@@ -156,6 +175,11 @@ export async function GET(request: Request) {
       if (!existingPost || !existingPost.body) {
         throw new Error(`Digest #${digestId} points at post "${slug}" but no such post/body exists`);
       }
+      assertNoFabricatedExperience(
+        { title: existingPost.title, dek: existingPost.dek ?? "", origin: "ai_generated" },
+        existingPost.body,
+        `posts/${slug} (DB-native daily draft)`,
+      );
       draft = {
         title: existingPost.title,
         dek: existingPost.dek ?? "",
@@ -170,13 +194,26 @@ export async function GET(request: Request) {
         diagram: existingPost.diagram ?? undefined,
         tags: (existingPost.tags as string[] | null) ?? [],
         pillarSlug: existingPost.pillar === NO_PILLAR ? null : (existingPost.pillar as WriteOutput["pillarSlug"]),
-        // Highlights aren't persisted on posts — email gets fewer highlights on a
-        // resumed run than a fresh one. Acceptable: this path only fires after a
-        // real prior failure, not on a normal day.
-        emailHighlights: [{ title: existingPost.title, oneLiner: existingPost.dek ?? "", url: `${env.siteUrl}/blog/${slug}` }],
+        // Highlights aren't persisted on posts. Reconstruct them from retained
+        // findings, never from a generated or internal URL, so a REVIEW retry is
+        // recoverable without weakening the source allowlist.
+        emailHighlights: findings.slice(0, 6).map((finding) => ({
+          title: finding.title,
+          oneLiner: finding.summary,
+          url: finding.sourceUrls[0],
+        })),
       };
+      await db
+        .update(posts)
+        .set({ sourceStatus, updatedAt: new Date() })
+        .where(eq(posts.slug, slug));
     } else {
       draft = await writeDaily({ findings, stockQuotes: quotes, date });
+      assertNoFabricatedExperience(
+        { title: draft.title, dek: draft.dek, origin: "ai_generated" },
+        draft.body,
+        `daily WRITE output for ${date}`,
+      );
       slug = await uniqueSlug(db, draft.title, date);
 
       // Deterministic check, not an LLM's judgment call: a relevantTickers entry only
@@ -206,7 +243,7 @@ export async function GET(request: Request) {
           draft: true,
           format: "article",
           origin: "ai_generated",
-          sourceStatus: "primary",
+          sourceStatus,
           testedStatus: "not_tested",
           authenticityStatus: "pending",
           tags: draft.tags,
@@ -232,12 +269,12 @@ export async function GET(request: Request) {
     // one of the real finding sourceUrls actually supplied. A hallucinated or
     // malformed URL here would otherwise reach a real subscriber inbox as a live link.
     const realUrls = new Set(findings.flatMap((f) => f.sourceUrls));
-    const safeHighlights = draft.emailHighlights.filter((h) => realUrls.has(h.url));
-    if (safeHighlights.length < draft.emailHighlights.length) {
-      console.warn(
-        `[cron/daily-write] ${date}: dropped ${draft.emailHighlights.length - safeHighlights.length} highlight(s) with a URL not in the source findings`,
-      );
-    }
+    assertUrlsAllowed(
+      draft.emailHighlights.map((highlight) => highlight.url),
+      [...realUrls],
+      "WRITE email highlights",
+    );
+    const safeHighlights = draft.emailHighlights;
 
     const review = await reviewDaily({ draft, findings });
 
@@ -247,7 +284,7 @@ export async function GET(request: Request) {
       title: draft.title,
       dek: draft.dek,
       postUrl,
-      highlights: safeHighlights.length > 0 ? safeHighlights : draft.emailHighlights.slice(0, 1),
+      highlights: safeHighlights,
       stockQuotes: quotes,
     });
 

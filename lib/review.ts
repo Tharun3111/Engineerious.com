@@ -14,7 +14,7 @@ import type { WriteOutput } from "@/lib/write";
  * in /admin decides what to do with the flags.
  */
 
-const reviewSchema = z.object({
+export const reviewSchema = z.object({
   groundingViolations: z.array(z.object({ quote: z.string(), issue: z.string() })),
   voiceViolations: z.array(z.object({ quote: z.string(), issue: z.string() })),
   overallVerdict: z.string(),
@@ -22,6 +22,30 @@ const reviewSchema = z.object({
 });
 
 export type ReviewReport = z.infer<typeof reviewSchema>;
+
+/**
+ * Deterministic publication gate over REVIEW's structured output. REVIEW may flag,
+ * but it cannot clear its own flags by moving a digest to another status; only a
+ * clean report is eligible for the separate human approval action.
+ */
+export function reviewBlockingIssues(report: unknown): string[] {
+  const parsed = reviewSchema.safeParse(report);
+  if (!parsed.success) return ["Review report is missing or invalid."];
+
+  const issues: string[] = [];
+  const grounding = parsed.data.groundingViolations.length;
+  const voice = parsed.data.voiceViolations.length;
+  if (grounding > 0) {
+    issues.push(`${grounding} grounding violation${grounding === 1 ? "" : "s"} remain${grounding === 1 ? "s" : ""} unresolved.`);
+  }
+  if (voice > 0) {
+    issues.push(`${voice} voice violation${voice === 1 ? "" : "s"} remain${voice === 1 ? "s" : ""} unresolved.`);
+  }
+  if (parsed.data.readsAsGenericAiContent) {
+    issues.push("The draft is still flagged as generic AI content.");
+  }
+  return issues;
+}
 
 const SYSTEM = `You are the REVIEW stage of the daily Engineerious pipeline — an adversarial skeptic
 checking a draft before a human decides whether to publish it. Your job is to find problems, not

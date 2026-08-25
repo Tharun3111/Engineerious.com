@@ -61,11 +61,17 @@ async function upsert(rows: NewItem[]): Promise<number> {
       .onConflictDoUpdate({
         target: items.urlHash,
         set: {
-          title: sql`excluded.title`,
-          summary: sql`coalesce(excluded.summary, ${items.summary})`,
+          type: sql`case when excluded.source_weight > ${items.sourceWeight} then excluded.type else ${items.type} end`,
+          title: sql`case when excluded.source_weight > ${items.sourceWeight} then excluded.title else ${items.title} end`,
+          url: sql`case when excluded.source_weight > ${items.sourceWeight} then excluded.url else ${items.url} end`,
+          summary: sql`case when excluded.source_weight > ${items.sourceWeight} then coalesce(excluded.summary, ${items.summary}) else coalesce(${items.summary}, excluded.summary) end`,
+          source: sql`case when excluded.source_weight > ${items.sourceWeight} then excluded.source else ${items.source} end`,
+          sourceSlug: sql`case when excluded.source_weight > ${items.sourceWeight} then excluded.source_slug else ${items.sourceSlug} end`,
+          sourceWeight: sql`greatest(${items.sourceWeight}, excluded.source_weight)`,
+          author: sql`case when excluded.source_weight > ${items.sourceWeight} then coalesce(excluded.author, ${items.author}) else coalesce(${items.author}, excluded.author) end`,
           points: sql`greatest(${items.points}, excluded.points)`,
           publishedAt: sql`coalesce(${items.publishedAt}, excluded.published_at)`,
-          rawJson: sql`excluded.raw_json`,
+          rawJson: sql`case when excluded.source_weight > ${items.sourceWeight} then excluded.raw_json else ${items.rawJson} end`,
         },
       })
       .returning({ id: items.id });
@@ -138,7 +144,7 @@ export async function runIngest(adapters: IngestAdapter[]): Promise<AdapterResul
  * conflict key twice ("cannot affect row a second time"), and feeds do repeat links
  * within a single response. Collapse in memory first, keeping the higher-weight copy.
  */
-function dedupeWithinBatch(rows: NewItem[]): NewItem[] {
+export function dedupeWithinBatch(rows: NewItem[]): NewItem[] {
   const byHash = new Map<string, NewItem>();
   for (const row of rows) {
     const existing = byHash.get(row.urlHash);
@@ -158,4 +164,10 @@ export function summarise(results: AdapterResult[]) {
     written: results.reduce((n, r) => n + (r.inserted ?? 0), 0),
     results,
   };
+}
+
+/** Cron providers only alert on non-2xx responses. Any adapter failure therefore
+ * needs a failing status even when other adapters produced useful partial data. */
+export function ingestHttpStatus(results: AdapterResult[]): number {
+  return results.some((result) => !result.ok) ? 502 : 200;
 }

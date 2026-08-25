@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     .onConflictDoNothing({ target: items.urlHash });
 
   await db.update(submissions).set({ status: "accepted" }).where(eq(submissions.id, id));
-  revalidateTag(FEED_CACHE_TAG);
+  revalidateTag(FEED_CACHE_TAG, "max");
 
   return NextResponse.json({ ok: true, status: "accepted" });
 }

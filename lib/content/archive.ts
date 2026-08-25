@@ -1,7 +1,7 @@
 import { desc } from "drizzle-orm";
 
 import { digests as digestsTable, type Item } from "@/db/schema";
-import { getDb } from "@/lib/db";
+import { getDb, shouldFailOnDatabaseError } from "@/lib/db";
 import { getAllDbPosts, getPublishedPosts, isVisible, type BlogPost } from "@/lib/content/blog";
 import { getActiveDates, getItemsForDate } from "@/lib/queries";
 
@@ -41,6 +41,7 @@ async function getVisiblePipelineDays(): Promise<{ date: string; post: BlogPost 
     return entries;
   } catch (error) {
     console.error("[archive] could not load pipeline digest dates:", error);
+    if (shouldFailOnDatabaseError()) throw error;
     return [];
   }
 }

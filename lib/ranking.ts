@@ -10,6 +10,8 @@
  */
 
 export const GRAVITY = 1.8;
+export const POINTS_OFFSET = 1;
+export const AGE_OFFSET_HOURS = 2;
 
 export type RankInput = {
   points: number;
@@ -26,7 +28,7 @@ export function ageHours(input: Pick<RankInput, "publishedAt" | "firstSeen">, no
 }
 
 export function computeScore(input: RankInput, now = new Date()): number {
-  const effectivePoints = input.points - 1 + input.sourceWeight;
-  const decay = Math.pow(ageHours(input, now) + 2, GRAVITY);
+  const effectivePoints = input.points - POINTS_OFFSET + input.sourceWeight;
+  const decay = Math.pow(ageHours(input, now) + AGE_OFFSET_HOURS, GRAVITY);
   return effectivePoints / decay;
 }

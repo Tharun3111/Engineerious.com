@@ -42,7 +42,7 @@ export function NewsletterCTA({
         throw new Error(body.error ?? "We couldn't add this email. Try again in a few minutes.");
       }
       setStatus("ok");
-      setMessage("You're subscribed. Check your inbox to confirm.");
+      setMessage("You're subscribed. We'll email you when there's something worth sharing.");
       setEmail("");
     } catch (error) {
       setStatus("error");

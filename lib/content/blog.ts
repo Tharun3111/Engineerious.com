@@ -5,7 +5,7 @@ import { desc } from "drizzle-orm";
 import matter from "gray-matter";
 
 import { posts as postsTable, type DiagramSpec } from "@/db/schema";
-import { getDb } from "@/lib/db";
+import { getDb, shouldFailOnDatabaseError } from "@/lib/db";
 import {
   assertNoFabricatedExperience,
   findFabricatedExperienceClaims,
@@ -143,9 +143,11 @@ export async function getAllDbPosts(): Promise<BlogPost[]> {
         diagram: r.diagram ?? undefined,
       }));
   } catch (error) {
-    // A missing/unreachable DB must not take down the whole blog — MDX posts still
-    // render; this just means DB-native posts are temporarily absent, not a 500.
+    // Local authoring remains usable without Postgres, but a production Vercel
+    // build with DATABASE_URL configured must never silently freeze the DB-backed
+    // publication as an apparently legitimate empty site.
     console.error("[blog] could not load DB-native posts:", error);
+    if (shouldFailOnDatabaseError()) throw error;
     return [];
   }
 }

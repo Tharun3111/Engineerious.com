@@ -2,14 +2,18 @@
 
 ## Public release boundary
 
-`PUBLIC_RESEARCH_ENABLED` gates `/open-source`, `/resources`, `/submit`, and
-`/pillars/*` (404 + noindex when off — see `middleware.ts`, `lib/public-launch.ts`,
-`app/robots.ts`). As of the daily-digest system build (2026-08), this flag is set
-`true` in production: the whole site is live while the automated research→write→
-review pipeline is built behind it, rather than waiting for the full pipeline before
-opening the site back up. Re-close the gate (`PUBLIC_RESEARCH_ENABLED=false`) if a
-problem surfaces on those routes specifically — it's a one-env-var rollback, no
-deploy needed.
+The launch boundary has two tiers:
+
+- `/news`, `/models`, and `/resources` are always closed with a 404 and an
+  `X-Robots-Tag: noindex, nofollow` header. News and Models are uncurated raw-feed
+  surfaces; Resources is placeholder content. An environment flag cannot open them.
+- `PUBLIC_RESEARCH_ENABLED` gates `/open-source`, `/submit`, and `/pillars/*`.
+  Only the exact value `true` opens them. The default and recommended pre-review
+  setting is `false`.
+
+The same policy is applied to public data reads: Archive sees no News or Model rows,
+and it sees approved Open Source rows only while the research gate is open. A direct
+POST to `/api/submit` also returns 404 while the gate is closed.
 
 ## Publishing a post
 
@@ -42,7 +46,9 @@ BASE_URL=https://example.vercel.app npm run qa:smoke
 BASE_URL=https://example.vercel.app npm run test:e2e
 ```
 
-With `PUBLIC_RESEARCH_ENABLED=true` (current default, see above): confirm
-`/open-source`, `/resources`, `/submit`, and pillar routes return 200 with no
-`X-Robots-Tag` header. Confirm `/news`, `/models`, and `/blog` return 200 without a
-feed error state.
+With `PUBLIC_RESEARCH_ENABLED=false`, run smoke QA with `QA_GATE_CLOSED=true` and
+confirm Open Source, Submit, and pillar routes return 404. With the flag set to
+`true`, confirm those three route families return 200 and rerun without
+`QA_GATE_CLOSED`. In both states, confirm News, Models, and Resources return 404;
+Blog and Archive return 200; and the sitemap contains none of the always-closed or
+utility routes.

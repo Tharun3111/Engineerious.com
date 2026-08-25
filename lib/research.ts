@@ -3,6 +3,7 @@ import { z } from "zod";
 import { complete } from "@/lib/llm";
 import type { Item } from "@/db/schema";
 import type { GatherResult } from "@/lib/adapters/tavily";
+import { assertUrlsAllowed } from "@/lib/editorial-safety";
 import type { StockQuote } from "@/lib/stocks";
 
 /**
@@ -13,10 +14,10 @@ import type { StockQuote } from "@/lib/stocks";
  * didn't ground.
  */
 
-const findingSchema = z.object({
+export const findingSchema = z.object({
   title: z.string(),
   summary: z.string(),
-  sourceUrls: z.array(z.string()).min(1),
+  sourceUrls: z.array(z.string().url()).min(1),
   category: z.enum(["model_release", "research", "tool_framework", "incident", "industry_news", "technique"]),
   novelty: z.enum(["high", "medium", "low"]),
   relevantPillar: z.enum(["eval-first", "mcp", "rag-mlops"]).nullable().optional(),
@@ -30,6 +31,14 @@ const findingsResponseSchema = z.object({
 
 export type Finding = z.infer<typeof findingSchema>;
 export type ResearchOutput = z.infer<typeof findingsResponseSchema>;
+
+export function parseStoredFindings(value: unknown): Finding[] {
+  const parsed = z.array(findingSchema).safeParse(value ?? []);
+  if (!parsed.success) {
+    throw new Error(`Stored research findings failed schema validation: ${JSON.stringify(parsed.error.issues)}`);
+  }
+  return parsed.data;
+}
 
 const SYSTEM = `You are the research stage of an automated AI-engineering news pipeline. Your job
 is to find what is genuinely novel in the material you're given and structure it — not to write
@@ -117,6 +126,19 @@ Produce the findings JSON now.`;
   if (!result.success) {
     throw new Error(`Research stage output failed schema validation: ${JSON.stringify(result.error.issues)}`);
   }
+
+  // Prompt instructions are not an integrity boundary. Prove every returned URL was
+  // present in the gathered material before persisting findings or treating them as
+  // REVIEW's source of truth.
+  const allowedUrls = [
+    ...input.gathered.flatMap(({ results }) => results.map((item) => item.url)),
+    ...input.recentItems.map((item) => item.url),
+  ];
+  assertUrlsAllowed(
+    result.data.findings.flatMap((finding) => finding.sourceUrls),
+    allowedUrls,
+    "Research stage",
+  );
 
   return result.data;
 }

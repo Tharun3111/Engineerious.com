@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type SearchItem = { slug: string; title: string; dek: string; pillar: string };
@@ -22,26 +22,51 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<SearchItem[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const listboxId = useId();
   const router = useRouter();
 
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => {
+    setOpen(false);
+    if (loadError) setItems(null);
+    window.setTimeout(() => triggerRef.current?.focus(), 0);
+  }, [loadError]);
+
+  const openPalette = useCallback(() => {
+    setQuery("");
+    setActive(0);
+    setLoadError(false);
+    setOpen(true);
+
+    if (items === null) {
+      fetch("/api/search")
+        .then((res) => {
+          if (!res.ok) throw new Error("Search index unavailable");
+          return res.json();
+        })
+        .then((data: SearchItem[]) => setItems(data))
+        .catch(() => {
+          setItems([]);
+          setLoadError(true);
+        });
+    }
+  }, [items]);
 
   useEffect(() => {
     if (!open) return;
-    setQuery("");
-    setActive(0);
-    if (items === null) {
-      fetch("/api/search")
-        .then((res) => (res.ok ? res.json() : []))
-        .then((data: SearchItem[]) => setItems(data))
-        .catch(() => setItems([]));
-    }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     // Focus after the panel mounts, not on the same tick it's requested.
     const id = window.setTimeout(() => inputRef.current?.focus(), 10);
-    return () => window.clearTimeout(id);
-  }, [open, items]);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.clearTimeout(id);
+    };
+  }, [open]);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -50,17 +75,18 @@ export function CommandPalette() {
 
       if ((event.key === "k" || event.key === "K") && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
-        setOpen((v) => !v);
+        if (open) close();
+        else openPalette();
       } else if (event.key === "/" && !typing && !open) {
         event.preventDefault();
-        setOpen(true);
+        openPalette();
       } else if (event.key === "Escape" && open) {
         close();
       }
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, close]);
+  }, [open, close, openPalette]);
 
   const filtered = (items ?? []).filter((item) => {
     if (!query.trim()) return true;
@@ -86,13 +112,33 @@ export function CommandPalette() {
     }
   }
 
+  function trapFocus(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Tab") return;
+    const first = inputRef.current;
+    const last = closeRef.current;
+    if (!first || !last) return;
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  const activeOptionId = filtered[active] ? `${listboxId}-option-${active}` : undefined;
+
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setOpen(true)}
-        className="ml-auto flex shrink-0 items-center gap-2 rounded-md border border-rule-strong bg-bg px-2.5 py-1.5 text-[12px] text-muted transition-colors duration-150 hover:border-accent"
-        aria-label="Search entries"
+        onClick={openPalette}
+        className="ml-auto flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-md border border-rule-strong bg-bg px-3 text-[12px] text-muted transition-colors duration-150 hover:border-accent"
+        aria-label="Search Engineerious"
+        aria-haspopup="dialog"
+        aria-expanded={open}
       >
         {/* Full label + kbd hint from sm up; icon-only below that so the nav row
             wraps on its own terms instead of squeezing this into "S…". */}
@@ -110,12 +156,32 @@ export function CommandPalette() {
       {open && (
         <>
           <div className="cmdk-scrim" onClick={close} aria-hidden />
-          <div className="cmdk-panel" role="dialog" aria-modal="true" aria-label="Search">
+          <div
+            className="cmdk-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`${listboxId}-title`}
+            onKeyDown={trapFocus}
+          >
+            <div className="cmdk-head">
+              <label id={`${listboxId}-title`} htmlFor={`${listboxId}-input`}>
+                Search Engineerious
+              </label>
+              <button ref={closeRef} type="button" onClick={close} className="cmdk-close">
+                Close
+              </button>
+            </div>
             <input
+              id={`${listboxId}-input`}
               ref={inputRef}
               className="cmdk-input"
               placeholder="Search entries, topics&hellip;"
               autoComplete="off"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded="true"
+              aria-controls={listboxId}
+              aria-activedescendant={activeOptionId}
               value={query}
               onChange={(event) => {
                 setQuery(event.target.value);
@@ -123,22 +189,30 @@ export function CommandPalette() {
               }}
               onKeyDown={onInputKey}
             />
-            <ul className="cmdk-list">
+            <ul id={listboxId} className="cmdk-list" role="listbox" aria-label="Search results">
               {items === null ? (
-                <li className="cmdk-empty">Loading&hellip;</li>
+                <li className="cmdk-empty" role="status">Loading search index&hellip;</li>
+              ) : loadError ? (
+                <li className="cmdk-empty" role="status">
+                  Search is unavailable right now. Close this panel and try again.
+                </li>
               ) : filtered.length === 0 ? (
-                <li className="cmdk-empty">No entry matches &ldquo;{query}&rdquo;.</li>
+                <li className="cmdk-empty" role="status">No entry matches &ldquo;{query}&rdquo;.</li>
               ) : (
                 filtered.map((item, i) => (
                   <li
                     key={item.slug}
+                    id={`${listboxId}-option-${i}`}
                     className="cmdk-item"
+                    role="option"
+                    aria-selected={i === active}
                     data-active={i === active}
                     onMouseEnter={() => setActive(i)}
-                    onClick={() => go(item)}
                   >
-                    <span className="t">{item.title}</span>
-                    <span className="g">{item.pillar}</span>
+                    <button type="button" tabIndex={-1} onClick={() => go(item)}>
+                      <span className="t">{item.title}</span>
+                      <span className="g">{item.pillar}</span>
+                    </button>
                   </li>
                 ))
               )}
@@ -147,7 +221,7 @@ export function CommandPalette() {
               <span>&uarr;&darr; navigate</span>
               <span>&crarr; open</span>
               <span>esc close</span>
-              <span className="ml-auto">
+              <span className="ml-auto" aria-live="polite">
                 {items === null ? "" : `${filtered.length} of ${items.length}`}
               </span>
             </div>

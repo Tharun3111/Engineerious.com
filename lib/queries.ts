@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 
 import { digests, items, repurposeJobs, submissions, type Item, type ItemType } from "@/db/schema";
 import { getDb } from "@/lib/db";
+import { isPublicItemType } from "@/lib/public-launch";
 import { toChicagoDate } from "@/lib/time";
 
 export type FeedSort = "hot" | "new";
@@ -38,10 +39,15 @@ type ResolvedFeedQuery = {
 };
 
 async function queryFeed({ type, sort, limit, offset }: ResolvedFeedQuery): Promise<Item[]> {
+  const enabledValue = process.env.PUBLIC_RESEARCH_ENABLED;
+  if (type ? !isPublicItemType(type, enabledValue) : !isPublicItemType("oss", enabledValue)) {
+    return [];
+  }
+
   const db = getDb();
-  const where = type
-    ? and(eq(items.status, "approved"), eq(items.type, type))
-    : eq(items.status, "approved");
+  // The unfiltered public feed is still restricted to the currently launchable
+  // item type. `status=approved` alone is not a public visibility contract.
+  const where = and(eq(items.status, "approved"), eq(items.type, type ?? "oss"));
 
   return db
     .select()
@@ -86,7 +92,8 @@ export async function getFeed({
   limit = 50,
   offset = 0,
 }: FeedQuery = {}): Promise<FeedResult> {
-  const key = ["feed", type ?? "all", sort, String(limit), String(offset)];
+  const gate = process.env.PUBLIC_RESEARCH_ENABLED === "true" ? "open" : "closed";
+  const key = ["feed", gate, type ?? "all", sort, String(limit), String(offset)];
 
   try {
     const rows = await unstable_cache(() => queryFeed({ type, sort, limit, offset }), key, {
@@ -101,8 +108,14 @@ export async function getFeed({
 }
 
 export async function getItem(id: number): Promise<Item | null> {
+  if (!isPublicItemType("oss", process.env.PUBLIC_RESEARCH_ENABLED)) return null;
+
   try {
-    const rows = await getDb().select().from(items).where(eq(items.id, id)).limit(1);
+    const rows = await getDb()
+      .select()
+      .from(items)
+      .where(and(eq(items.id, id), eq(items.status, "approved"), eq(items.type, "oss")))
+      .limit(1);
     return rows[0] ?? null;
   } catch (error) {
     describe(error);
@@ -167,11 +180,13 @@ export async function getSubmissions(limit = 100) {
 
 export async function getFeedCounts(): Promise<Record<ItemType, number>> {
   const empty = { news: 0, model: 0, oss: 0 } satisfies Record<ItemType, number>;
+  if (!isPublicItemType("oss", process.env.PUBLIC_RESEARCH_ENABLED)) return empty;
+
   try {
     const rows = await getDb()
       .select({ type: items.type, count: sql<number>`count(*)::int` })
       .from(items)
-      .where(eq(items.status, "approved"))
+      .where(and(eq(items.status, "approved"), eq(items.type, "oss")))
       .groupBy(items.type);
     return rows.reduce((acc, row) => ({ ...acc, [row.type]: row.count }), empty);
   } catch (error) {
@@ -181,16 +196,18 @@ export async function getFeedCounts(): Promise<Record<ItemType, number>> {
 }
 
 /**
- * Every Chicago calendar date that has at least one approved item — powers the
- * archive calendar's "which days are lit up" highlighting. Only pulls the two
- * timestamp columns (not full rows): cheap even before this needs its own index.
+ * Every Chicago calendar date that has at least one publicly visible item — powers
+ * the archive calendar's "which days are lit up" highlighting. A route gate is not
+ * sufficient here: closed item types must not make an otherwise-empty date public.
  */
 export async function getActiveDates(): Promise<Set<string>> {
+  if (!isPublicItemType("oss", process.env.PUBLIC_RESEARCH_ENABLED)) return new Set();
+
   try {
     const rows = await getDb()
       .select({ publishedAt: items.publishedAt, firstSeen: items.firstSeen })
       .from(items)
-      .where(eq(items.status, "approved"));
+      .where(and(eq(items.status, "approved"), eq(items.type, "oss")));
     return new Set(rows.map((r) => toChicagoDate(r.publishedAt ?? r.firstSeen)));
   } catch (error) {
     describe(error);
@@ -199,8 +216,8 @@ export async function getActiveDates(): Promise<Set<string>> {
 }
 
 /**
- * Approved items (any type) whose Chicago calendar date matches — the archive
- * day view's "what shipped this day" query, alongside that day's blog post(s).
+ * Publicly visible items whose Chicago calendar date matches — the archive day
+ * view's "what shipped this day" query, alongside that day's blog post(s).
  *
  * items has no plain date column, only timestamptz. Bounding the SQL query to a
  * generous UTC window first (cheap, sargable against items_published_idx) then
@@ -209,6 +226,10 @@ export async function getActiveDates(): Promise<Set<string>> {
  * boundary the way a hand-rolled UTC-offset calculation could.
  */
 export async function getItemsForDate(date: string): Promise<FeedResult> {
+  if (!isPublicItemType("oss", process.env.PUBLIC_RESEARCH_ENABLED)) {
+    return { items: [], error: null };
+  }
+
   try {
     const start = new Date(`${date}T00:00:00.000Z`);
     start.setUTCDate(start.getUTCDate() - 1);
@@ -221,6 +242,7 @@ export async function getItemsForDate(date: string): Promise<FeedResult> {
       .where(
         and(
           eq(items.status, "approved"),
+          eq(items.type, "oss"),
           sql`coalesce(${items.publishedAt}, ${items.firstSeen}) >= ${start}`,
           sql`coalesce(${items.publishedAt}, ${items.firstSeen}) < ${end}`,
         ),

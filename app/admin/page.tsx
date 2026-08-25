@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/** Gated by HTTP Basic in middleware.ts. Nothing here is reachable unauthenticated. */
+/** Gated by HTTP Basic in proxy.ts. Nothing here is reachable unauthenticated. */
 export default async function AdminPage() {
   const [pending, queue, subs, pendingDigests] = await Promise.all([
     getPendingItems(),
