@@ -22,6 +22,24 @@ POST to `/api/submit` also returns 404 while the gate is closed.
 3. Keep AI provenance accurate in `origin`; do not describe AI-generated work as firsthand experience.
 4. Run `npm run typecheck`, `npm run lint`, `npm run test:coverage`, and `npm run build` before deployment.
 
+## Publishing a Daily Brief
+
+1. Run the daily gather/research job, then the structured writer. The writer checkpoints a
+   private `daily_draft`; it does not create public content, a blog post, or an email.
+2. Open the digest in `/admin`, inspect the lazily loaded findings and raw evidence, and edit any
+   factual field that needs correction. Source URLs must exactly match gathered HTTP(S) evidence.
+3. Save the revision and run factual review again after any factual edit. A review with grounding,
+   voice, or generic-content flags is not publishable.
+4. Write Tharun's Take yourself, save it, then explicitly confirm that exact saved text. Editing
+   it later invalidates the confirmation.
+5. Select `Publish Daily`. Publication locks the digest and atomically copies the reviewed draft
+   into the immutable `daily_published` snapshot. A stale editor, rejected digest, changed review
+   hash, or changed Take hash fails closed.
+
+Public `/daily` routes and the sitemap read only valid published snapshots. Before the first valid
+snapshot exists, `/daily` remains useful but `noindex`; dated drafts return 404. Publishing does not
+send a newsletter.
+
 ## Newsletter
 
 Postgres is the subscriber source of truth. Resend (`lib/resend.ts`) is optional for
@@ -48,5 +66,5 @@ With `PUBLIC_RESEARCH_ENABLED=false`, run smoke QA with `QA_GATE_CLOSED=true` an
 confirm Open Source, Submit, and pillar routes return 404. With the flag set to
 `true`, confirm those three route families return 200 and rerun without
 `QA_GATE_CLOSED`. In both states, confirm News, Models, and Resources return 404;
-Blog and Archive return 200; and the sitemap contains none of the always-closed or
-utility routes.
+Blog, Daily, and Archive return 200; and the sitemap contains none of the always-closed
+or utility routes. `/daily` appears in the sitemap only after a valid published snapshot exists.

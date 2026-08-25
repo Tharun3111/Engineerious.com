@@ -50,6 +50,13 @@
       "when": 1787638380799,
       "tag": "0006_jittery_justice",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787641334735,
+      "tag": "0007_big_peter_parker",
+      "breakpoints": true
     }
   ]
 }

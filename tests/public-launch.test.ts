@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   isClosedPublicPath,
   isDeferredPublicPath,
+  isInvalidDailyDatePath,
   isPublicItemType,
   shouldCloseResearchPath,
 } from "@/lib/public-launch";
@@ -68,5 +69,26 @@ describe("public launch gate", () => {
     expect(isPublicItemType("oss")).toBe(false);
     expect(isPublicItemType("news", "true")).toBe(false);
     expect(isPublicItemType("model", "true")).toBe(false);
+  });
+
+  it("rejects malformed Daily date paths before a streamed page can return 200", () => {
+    for (const valid of [
+      "/daily",
+      "/daily/",
+      "/daily/2024-02-29",
+      "/daily/2024-02-29/",
+      "/dailyish/not-a-date",
+      "/about",
+    ]) {
+      expect(isInvalidDailyDatePath(valid), valid).toBe(false);
+    }
+    for (const invalid of [
+      "/daily/not-a-date",
+      "/daily/2026-02-30",
+      "/daily/2026-08-25/extra",
+      "/daily/2026-8-25",
+    ]) {
+      expect(isInvalidDailyDatePath(invalid), invalid).toBe(true);
+    }
   });
 });

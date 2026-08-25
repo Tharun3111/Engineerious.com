@@ -14,17 +14,26 @@ test("visitor-first public shell has a usable identity, primary navigation, and 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Tharun Chowdary Malepati");
 });
 
-test("phase-one destinations are honest, linked, and never thin-indexed", async ({ page, request }) => {
+test("primary destinations are honest and linked", async ({ page, request }) => {
   for (const path of ["/daily", "/ai", "/projects", "/projects/engineerious"]) {
     const response = await request.get(path);
     expect(response.status(), path).toBe(200);
   }
 
-  for (const path of ["/daily", "/ai"]) {
-    await page.goto(path);
+  await page.goto("/daily");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  const dailyState = page.locator("[data-feed-state]");
+  if (await dailyState.count()) {
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  } else {
+    await expect(page.getByText("Human approved").first()).toBeVisible();
+    const robots = page.locator('meta[name="robots"]');
+    const robotsContent = (await robots.count()) ? await robots.getAttribute("content") : null;
+    expect(robotsContent ?? "").not.toMatch(/noindex/);
   }
+
+  await page.goto("/ai");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
   await page.goto("/projects/engineerious");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Engineerious");
@@ -106,15 +115,27 @@ test("deferred research routes move together behind PUBLIC_RESEARCH_ENABLED", as
   }
 });
 
-test("sitemap never advertises closed or utility routes", async ({ request }) => {
+test("sitemap never advertises closed or utility routes and follows Daily visibility", async ({ request }) => {
   const response = await request.get("/sitemap.xml");
   expect(response.status()).toBe(200);
   const sitemap = await response.text();
 
-  for (const path of ["/news", "/models", "/resources", "/submit", "/daily", "/ai"]) {
+  for (const path of ["/news", "/models", "/resources", "/submit"]) {
     expect(sitemap, path).not.toContain(path);
   }
+
+  const daily = await request.get("/daily");
+  const dailyHtml = await daily.text();
+  const dailyIsNoindex = /<meta[^>]+name="robots"[^>]+noindex/i.test(dailyHtml);
+  expect(sitemap.includes("/daily")).toBe(!dailyIsNoindex);
   expect(sitemap).toContain("/projects/engineerious");
+});
+
+test("private or invalid Daily snapshots never resolve as public dates", async ({ request }) => {
+  for (const path of ["/daily/not-a-date", "/daily/2026-02-30"]) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(404);
+  }
 });
 
 test("newsletter error is truthful and recoverable", async ({ page }) => {

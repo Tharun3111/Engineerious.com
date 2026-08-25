@@ -2,9 +2,36 @@ import type { MetadataRoute } from "next";
 
 import { getArchiveIndex } from "@/lib/content/archive";
 import { getPublishedPosts } from "@/lib/content/blog";
+import {
+  getDailyBriefArchive,
+  type PublicDailyBrief,
+} from "@/lib/daily-queries";
 import { env } from "@/lib/env";
 import { PILLAR_SLUGS } from "@/lib/pillars";
 import { projects } from "@/lib/projects";
+
+export function buildDailySitemapEntries(
+  site: string,
+  briefs: PublicDailyBrief[],
+): MetadataRoute.Sitemap {
+  const latest = briefs[0];
+  if (!latest) return [];
+
+  return [
+    {
+      url: `${site}/daily`,
+      lastModified: latest.publishedAt,
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    ...briefs.map((entry) => ({
+      url: `${site}/daily/${entry.date}`,
+      lastModified: entry.publishedAt,
+      changeFrequency: "never" as const,
+      priority: 0.75,
+    })),
+  ];
+}
 
 /**
  * Static routes plus blog and pillar pages. Item detail pages are deliberately out:
@@ -19,8 +46,12 @@ import { projects } from "@/lib/projects";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const site = env.siteUrl.replace(/\/$/, "");
   const now = new Date();
-  const posts = await getPublishedPosts();
-  const archiveDays = await getArchiveIndex();
+  const [posts, archiveDays, dailyArchive] = await Promise.all([
+    getPublishedPosts(),
+    getArchiveIndex(),
+    getDailyBriefArchive(100),
+  ]);
+  const dailyEntries = buildDailySitemapEntries(site, dailyArchive.briefs);
 
   const gated: MetadataRoute.Sitemap = env.publicResearchEnabled
     ? [
@@ -53,6 +84,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: "monthly" as const,
         priority: 0.8,
       })),
+    ...dailyEntries,
     { url: `${site}/projects`, lastModified: now, changeFrequency: "monthly" as const, priority: 0.8 },
     ...projects.map((project) => ({
       url: `${site}/projects/${project.slug}`,

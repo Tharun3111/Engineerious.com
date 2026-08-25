@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { shouldCloseResearchPath } from "@/lib/public-launch";
+import { isInvalidDailyDatePath, shouldCloseResearchPath } from "@/lib/public-launch";
 
 /**
  * HTTP Basic auth over /admin and /api/admin.
@@ -31,6 +31,13 @@ function unauthorized() {
 }
 
 export function proxy(request: NextRequest) {
+  if (isInvalidDailyDatePath(request.nextUrl.pathname)) {
+    return new NextResponse("Not found.", {
+      status: 404,
+      headers: { "X-Robots-Tag": "noindex, nofollow" },
+    });
+  }
+
   if (shouldCloseResearchPath(request.nextUrl.pathname, process.env.PUBLIC_RESEARCH_ENABLED)) {
     return new NextResponse("Not found.", {
       status: 404,
@@ -78,6 +85,7 @@ export const config = {
     "/admin/:path*",
     "/admin",
     "/api/admin/:path*",
+    "/daily/:path*",
     "/news/:path*",
     "/models/:path*",
     "/open-source/:path*",

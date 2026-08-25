@@ -6,6 +6,11 @@ import { NewsletterCTA } from "@/components/NewsletterCTA";
 import { ScopeBlock } from "@/components/ScopeBlock";
 import { getPublishedWritingPosts } from "@/lib/content/blog";
 import { currentDesk, type CurrentDeskEntry } from "@/lib/current-desk";
+import { deriveDailyQuickSheet } from "@/lib/daily-brief";
+import {
+  getLatestDailyBrief,
+  type DailyBriefQueryResult,
+} from "@/lib/daily-queries";
 import { getPillar } from "@/lib/pillars";
 import { featuredProjects } from "@/lib/projects";
 import { isoDate } from "@/lib/time";
@@ -22,8 +27,99 @@ const deskLanes = [
   ["Publish", "Engineering notes, reviewed intelligence, and project decisions"],
 ] as const;
 
+export function DailyHomeModule({ result }: { result: DailyBriefQueryResult }) {
+  const latest = result.brief;
+
+  if (!latest) {
+    const unavailable = Boolean(result.error);
+    return (
+      <div data-feed-state={unavailable ? "unavailable" : "empty"}>
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <div>
+            <p className="eyebrow">Daily intelligence</p>
+            <h2
+              id="daily-home-title"
+              className="font-display mt-2 max-w-[30ch] text-balance text-[24px] font-semibold leading-[1.3] tracking-[-0.025em] sm:text-[29px]"
+            >
+              {unavailable
+                ? "The reviewed Daily Brief is temporarily unavailable."
+                : "The first reviewed brief is still on the editorial desk."}
+            </h2>
+          </div>
+          <span className="pill">No filler</span>
+        </div>
+        <p className="mt-4 max-w-[62ch] text-[15px] leading-7 text-muted">
+          {unavailable
+            ? "Private drafts are never used as a fallback. The public preview will return when its validated snapshot is available."
+            : "This slot will hold the day’s important developments, why they matter, one useful concept, and Tharun’s Take. It stays empty until the structured brief and its sources have passed human review."}
+        </p>
+        <Link
+          href="/daily"
+          className="mt-5 inline-flex min-h-11 items-center font-mono text-[12.5px] font-medium text-accent hover:underline"
+        >
+          See how the Daily Brief works <span aria-hidden="true">&nbsp;&rarr;</span>
+        </Link>
+      </div>
+    );
+  }
+
+  const quickSheet = deriveDailyQuickSheet(latest.brief);
+  return (
+    <article data-feed-state="published">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="eyebrow">Latest Daily Brief</p>
+        <span className="pill pill-accent">Human approved</span>
+      </div>
+      <p className="mt-4 font-mono text-[10.5px] uppercase tracking-[0.1em] text-muted">
+        <time dateTime={latest.date}>{latest.date}</time> &middot; {quickSheet.sourceCount}{" "}
+        {quickSheet.sourceCount === 1 ? "source" : "sources"}
+      </p>
+      <h2
+        id="daily-home-title"
+        className="font-display mt-2 max-w-[30ch] text-balance text-[24px] font-semibold leading-[1.3] tracking-[-0.025em] sm:text-[29px]"
+      >
+        <Link href={`/daily/${latest.date}`} className="hover:text-accent">
+          {latest.brief.title}
+        </Link>
+      </h2>
+      <p className="mt-4 max-w-[62ch] text-[15px] leading-7 text-muted">
+        {latest.brief.summary}
+      </p>
+
+      <dl className="mt-5 divide-y divide-rule border-y border-rule">
+        <div className="grid gap-1 py-3.5 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-5">
+          <dt className="section-label">{quickSheet.biggestStory.label}</dt>
+          <dd>
+            <p className="text-[14px] font-semibold leading-5">{quickSheet.biggestStory.title}</p>
+            <p className="mt-1 text-[13.5px] leading-5 text-muted">
+              {quickSheet.biggestStory.detail}
+            </p>
+          </dd>
+        </div>
+        <div className="grid gap-1 py-3.5 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-5">
+          <dt className="section-label">Human perspective</dt>
+          <dd>
+            <p className="text-[14px] font-semibold leading-5">Tharun&rsquo;s Take</p>
+            <p className="mt-1 text-[13.5px] leading-5 text-muted">{quickSheet.myTake.detail}</p>
+          </dd>
+        </div>
+      </dl>
+
+      <Link
+        href={`/daily/${latest.date}`}
+        className="mt-4 inline-flex min-h-11 items-center font-mono text-[12.5px] font-medium text-accent hover:underline"
+      >
+        Read the reviewed brief <span aria-hidden="true">&nbsp;&rarr;</span>
+      </Link>
+    </article>
+  );
+}
+
 export default async function HomePage() {
-  const posts = await getPublishedWritingPosts();
+  const [posts, latestDaily] = await Promise.all([
+    getPublishedWritingPosts(),
+    getLatestDailyBrief(),
+  ]);
   const latest = posts[0];
   const latestPillar = latest ? getPillar(latest.pillar) : undefined;
   const deskEntries: readonly CurrentDeskEntry[] = currentDesk;
@@ -72,26 +168,11 @@ export default async function HomePage() {
 
       <EvidenceRail />
 
-      <section className="grid gap-10 border-b border-rule pb-12 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)] lg:gap-16">
-        <div>
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <div>
-              <p className="eyebrow">Daily intelligence</p>
-              <h2 className="font-display mt-2 max-w-[30ch] text-balance text-[24px] font-semibold leading-[1.3] tracking-[-0.025em] sm:text-[29px]">
-                The first reviewed brief is still on the editorial desk.
-              </h2>
-            </div>
-            <span className="pill">No filler</span>
-          </div>
-          <p className="mt-4 max-w-[62ch] text-[15px] leading-7 text-muted">
-            This slot will hold the day&rsquo;s important developments, why they matter,
-            one useful concept, and Tharun&rsquo;s Take. It stays empty until the structured
-            brief and its sources have passed human review.
-          </p>
-          <Link href="/daily" className="mt-5 inline-flex min-h-11 items-center font-mono text-[12.5px] font-medium text-accent hover:underline">
-            See how the Daily Brief works <span aria-hidden="true">&nbsp;&rarr;</span>
-          </Link>
-        </div>
+      <section
+        aria-labelledby="daily-home-title"
+        className="grid gap-10 border-b border-rule pb-12 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)] lg:gap-16"
+      >
+        <DailyHomeModule result={latestDaily} />
 
         <aside aria-labelledby="current-desk-title">
           <p className="section-label">Working set</p>

@@ -3,13 +3,14 @@
 A text-first AI engineering desk: reviewed intelligence, technical writing, and a
 semi-automated research pipeline under Tharun Chowdary Malepati's byline.
 
-Four content types:
+Five content types:
 
 | Section | Route | Sources |
 | --- | --- | --- |
 | AI News | `/news` | Ingestion continues; the uncurated public route is closed |
 | AI Models | `/models` | Ingestion continues; the uncurated public route is closed |
 | Open Source | `/open-source` | Approved GitHub releases; gated by `PUBLIC_RESEARCH_ENABLED` |
+| Daily | `/daily` | Human-reviewed, source-linked structured Daily Brief snapshots |
 | Blog | `/blog` | Verified MDX and reviewed database-native writing |
 
 `/resources` is always closed while it contains placeholders. `/submit` and pillar
@@ -163,6 +164,24 @@ posting API is what makes this tractable for one person.
 
 ---
 
+## The Daily Brief pipeline
+
+Daily is a separate, structured publication type; it is not an automatically generated blog post.
+
+1. `/api/cron/daily-digest` gathers and stores source evidence.
+2. `/api/cron/daily-write` writes a private `daily_draft`, validates every citation against the
+   gathered URLs, and runs an adversarial factual/voice review.
+3. `/admin` lets the human editor revise facts, inspect the stored evidence, write Tharun's Take,
+   rerun review, and explicitly confirm the exact saved Take.
+4. `Publish Daily` atomically freezes that reviewed revision into `daily_published`.
+5. Public routes read `daily_published` only. Drafts never become a fallback when data is missing
+   or invalid.
+
+Web publication does not send email or create a blog post. Newsletter delivery remains a separate,
+manual distribution action.
+
+---
+
 ## QA and deploys
 
 ```bash
@@ -182,17 +201,18 @@ assertions: **[gstack/README.md](gstack/README.md)**.
 
 ```
 app/
-  page.tsx                    unified ranked front page
+  page.tsx                    personal desk + latest reviewed Daily/writing/project
+  daily/[date]/               structured, human-reviewed Daily Brief snapshots
   news|models|open-source/    section feeds + item detail routes
   blog/[slug]/                MDX article
   pillars/[pillar]/           pillar hubs
   admin/                      approval console (HTTP Basic via proxy.ts)
   api/cron/{news,models,oss,rank,daily-digest,daily-write}/
   api/{repurpose,subscribe,submit}/
-  api/admin/{items,repurpose,submissions}/
-components/                   Row, FeedList, SectionTabs, Nav, NewsletterCTA, PillarBadge, AdminQueue
+  api/admin/{digests,items,repurpose,submissions}/
+components/                   public desk, Daily Brief, feed, navigation, forms, and admin editors
 lib/
-  ranking.ts dedupe.ts ingest.ts queries.ts auth.ts llm.ts env.ts
+  daily-{brief,publish,queries}.ts ranking.ts dedupe.ts ingest.ts queries.ts auth.ts llm.ts env.ts
   adapters/                   one file per source, all behind IngestAdapter
   content/                    MDX loader (Zod-validated frontmatter) + DB mirror
   repurpose/                  reviewed, copy-ready draft generation

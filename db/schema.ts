@@ -237,6 +237,26 @@ export const digests = pgTable(
     stockSummary: jsonb("stock_summary"),
     /** Stage 4 output — structured flags the human reviews before approving. */
     reviewReport: jsonb("review_report"),
+    /**
+     * Private, mutable Daily Brief working copy. The writer and admin editor may
+     * replace this value while the digest is under review; public routes never
+     * read it. Validation lives in lib/daily-brief.ts so malformed JSON fails
+     * closed instead of becoming public content.
+     */
+    dailyDraft: jsonb("daily_draft"),
+    /**
+     * Immutable public snapshot captured atomically when a reviewed Daily Brief
+     * is published. Public routes read this column exclusively.
+     */
+    dailyPublished: jsonb("daily_published"),
+    /** Optimistic concurrency token for edits to dailyDraft. */
+    draftVersion: integer("draft_version").notNull().default(0),
+    /** SHA-256 of the reviewed payload with myTake excluded. */
+    reviewedContentHash: text("reviewed_content_hash"),
+    /** SHA-256 of the exact human-confirmed myTake text. */
+    myTakeConfirmedHash: text("my_take_confirmed_hash"),
+    myTakeConfirmedAt: timestamp("my_take_confirmed_at", { withTimezone: true }),
+    myTakeConfirmedBy: text("my_take_confirmed_by"),
     reviewedBy: text("reviewed_by"),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     publishedAt: timestamp("published_at", { withTimezone: true }),
@@ -245,7 +265,11 @@ export const digests = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("digests_date_key").on(t.date), index("digests_status_idx").on(t.status)],
+  (t) => [
+    uniqueIndex("digests_date_key").on(t.date),
+    index("digests_status_idx").on(t.status),
+    index("digests_status_date_idx").on(t.status, t.date),
+  ],
 );
 
 /**

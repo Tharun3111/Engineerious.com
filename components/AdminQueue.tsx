@@ -283,8 +283,8 @@ export type ReviewReport = {
   readsAsGenericAiContent: boolean;
 };
 
-/** The daily-pipeline human gate. Approval publishes only the web artifact;
- * newsletter delivery is a separate reviewed action. */
+/** Recovery gate for pre-Phase-2 post-shaped digests. New structured Daily
+ * Briefs use DailyDigestEditor; this remains until every legacy row is actioned. */
 export function DigestQueue({ rows }: { rows: Array<{ digest: Digest; post: Post | null }> }) {
   const { run, pending, error } = useAction();
   const [expanded, setExpanded] = useState<number | null>(null);
