@@ -4,6 +4,7 @@ import { getArchiveIndex } from "@/lib/content/archive";
 import { getPublishedPosts } from "@/lib/content/blog";
 import { env } from "@/lib/env";
 import { PILLAR_SLUGS } from "@/lib/pillars";
+import { projects } from "@/lib/projects";
 
 /**
  * Static routes plus blog and pillar pages. Item detail pages are deliberately out:
@@ -52,6 +53,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: "monthly" as const,
         priority: 0.8,
       })),
+    { url: `${site}/projects`, lastModified: now, changeFrequency: "monthly" as const, priority: 0.8 },
+    ...projects.map((project) => ({
+      url: `${site}/projects/${project.slug}`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.75,
+    })),
     ...gated,
     { url: `${site}/about`, lastModified: now, changeFrequency: "monthly" as const, priority: 0.8 },
     { url: `${site}/subscribe`, lastModified: now, changeFrequency: "monthly" as const, priority: 0.7 },

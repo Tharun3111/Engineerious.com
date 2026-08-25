@@ -182,6 +182,20 @@ export async function getPublishedPosts(): Promise<BlogPost[]> {
 }
 
 /**
+ * Personal writing and machine-produced Daily briefs are different reader
+ * promises. A reviewed AI-generated brief can be public, but it must not appear
+ * under copy that says "what I learned". Daily owns that content; Writing keeps
+ * human and disclosed AI-assisted authorship only.
+ */
+export function isWritingPost(post: Pick<BlogPost, "origin">): boolean {
+  return post.origin !== "ai_generated";
+}
+
+export async function getPublishedWritingPosts(): Promise<BlogPost[]> {
+  return (await getPublishedPosts()).filter(isWritingPost);
+}
+
+/**
  * Unlike getAllPosts()/getPublishedPosts(), this does NOT filter on draft/
  * authenticityStatus — callers that resolve a single slug into a public-facing
  * page (metadata, JSON-LD, rendered content) MUST check isVisible() themselves

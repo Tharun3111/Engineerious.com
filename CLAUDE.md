@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Engineerious: a Next.js 16 (App Router) site that ranks AI news/model/open-source items with the
 Hacker News formula and publishes Tharun Chowdary's engineering writing, backed by Postgres
 (Neon in prod, node-postgres locally) via Drizzle, deployed on Vercel. The UI uses
-Instrument Sans with restrained Martian/DM Mono utility text and a blue/navy palette.
+Instrument Sans with restrained Martian Mono display/utility text and a blue/navy palette.
 
 ## Commands
 

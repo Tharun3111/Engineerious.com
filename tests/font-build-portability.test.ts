@@ -21,8 +21,7 @@ describe("production font loading", () => {
     // swapping a typeface doesn't fail a test whose real subject is "no
     // network fetch at build time." The stack has changed twice already —
     // IBM Plex Sans + Source Serif 4 (Reproduction Log), then Instrument Sans
-    // + Martian Mono + DM Mono (this redesign) — the portability guarantee
-    // did not.
+    // + Martian Mono (this redesign) — the portability guarantee did not.
     const layout = readLayout();
     const css = readGlobals();
 
