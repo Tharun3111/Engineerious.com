@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { AiCurationQueue } from "@/components/AiCurationQueue";
 import {
   DigestQueue,
   PendingItemsQueue,
@@ -13,6 +14,7 @@ import {
   parseDailyBriefDraft,
 } from "@/lib/daily-brief";
 import { getPostRow } from "@/lib/content/sync";
+import { getCuratedAiAdminQueue } from "@/lib/curated-ai-queries";
 import { getPendingDigests, getPendingItems, getRepurposeQueue, getSubmissions } from "@/lib/queries";
 import { llmConfigured } from "@/lib/llm";
 import { resendConfigured } from "@/lib/resend";
@@ -27,11 +29,12 @@ export const metadata: Metadata = {
 
 /** Gated by HTTP Basic in proxy.ts. Nothing here is reachable unauthenticated. */
 export default async function AdminPage() {
-  const [pending, queue, subs, pendingDigests] = await Promise.all([
+  const [pending, queue, subs, pendingDigests, curatedAi] = await Promise.all([
     getPendingItems(),
     getRepurposeQueue(),
     getSubmissions(),
     getPendingDigests(),
+    getCuratedAiAdminQueue(),
   ]);
 
   const legacyDigests = pendingDigests.digests.filter((digest) => !digest.dailyDraft);
@@ -80,6 +83,7 @@ export default async function AdminPage() {
     queue.error,
     subs.error,
     pendingDigests.error,
+    curatedAi.error,
     ...dailyErrors,
   ].filter(Boolean);
 
@@ -145,6 +149,21 @@ export default async function AdminPage() {
         </h2>
         <div className="mt-3">
           <RepurposeQueue jobs={queue.jobs} />
+        </div>
+      </section>
+
+      <section className="card p-5">
+        <h2 className="text-[15px] font-semibold">
+          Curated AI desk{" "}
+          <span className="font-mono text-[12px] font-normal text-muted">
+            ({curatedAi.items.length})
+          </span>
+        </h2>
+        <p className="mt-1 text-[13px] text-muted">
+          Review approved ingestion records into immutable public snapshots. Approval alone never publishes to the AI desk.
+        </p>
+        <div className="mt-4">
+          <AiCurationQueue items={curatedAi.items} />
         </div>
       </section>
 

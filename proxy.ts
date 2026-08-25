@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { isInvalidDailyDatePath, shouldCloseResearchPath } from "@/lib/public-launch";
+import {
+  isInvalidDailyDatePath,
+  isInvalidTopicPath,
+  shouldCloseResearchPath,
+} from "@/lib/public-launch";
 
 /**
  * HTTP Basic auth over /admin and /api/admin.
@@ -31,7 +35,10 @@ function unauthorized() {
 }
 
 export function proxy(request: NextRequest) {
-  if (isInvalidDailyDatePath(request.nextUrl.pathname)) {
+  if (
+    isInvalidDailyDatePath(request.nextUrl.pathname) ||
+    isInvalidTopicPath(request.nextUrl.pathname)
+  ) {
     return new NextResponse("Not found.", {
       status: 404,
       headers: { "X-Robots-Tag": "noindex, nofollow" },
@@ -92,5 +99,6 @@ export const config = {
     "/resources/:path*",
     "/submit/:path*",
     "/pillars/:path*",
+    "/topics/:path*",
   ],
 };

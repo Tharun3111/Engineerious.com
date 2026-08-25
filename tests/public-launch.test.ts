@@ -4,6 +4,7 @@ import {
   isClosedPublicPath,
   isDeferredPublicPath,
   isInvalidDailyDatePath,
+  isInvalidTopicPath,
   isPublicItemType,
   shouldCloseResearchPath,
 } from "@/lib/public-launch";
@@ -89,6 +90,27 @@ describe("public launch gate", () => {
       "/daily/2026-8-25",
     ]) {
       expect(isInvalidDailyDatePath(invalid), invalid).toBe(true);
+    }
+  });
+
+  it("rejects unknown topic paths while leaving registered hubs to runtime visibility", () => {
+    for (const valid of [
+      "/topics",
+      "/topics/",
+      "/topics/rag",
+      "/topics/agents/",
+      "/topics/mcp",
+      "/about",
+    ]) {
+      expect(isInvalidTopicPath(valid), valid).toBe(false);
+    }
+    for (const invalid of [
+      "/topics/retrieval",
+      "/topics/RAG",
+      "/topics/rag/extra",
+      "/topics//rag",
+    ]) {
+      expect(isInvalidTopicPath(invalid), invalid).toBe(true);
     }
   });
 });

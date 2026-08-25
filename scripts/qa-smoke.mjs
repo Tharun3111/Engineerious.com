@@ -30,6 +30,9 @@ const ROUTES = [
   { path: "/blog" },
   { path: "/daily", contains: "Daily" },
   { path: "/daily/not-a-date", expect: 404 },
+  { path: "/ai", contains: "Reviewed signal" },
+  { path: "/topics/not-a-topic", expect: 404 },
+  { path: "/api/search", contains: '"kind":"project"' },
   { path: "/archive" },
   // Gated by PUBLIC_RESEARCH_ENABLED (proxy.ts + lib/public-launch.ts). This
   // list assumes the deployment under test has the same state as QA_GATE_CLOSED.
@@ -58,6 +61,7 @@ const ROUTES = [
   { path: "/robots.txt", contains: "Sitemap:" },
   { path: "/admin", expectOneOf: [401, 503] },
   { path: "/api/admin/digests", method: "POST", body: {}, expectOneOf: [401, 503] },
+  { path: "/api/admin/curated-ai", method: "POST", body: {}, expectOneOf: [401, 503] },
   { path: "/api/cron/news", expect: 401 },
   { path: "/api/cron/models", expect: 401 },
   { path: "/api/cron/oss", expect: 401 },

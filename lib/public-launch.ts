@@ -62,6 +62,20 @@ export function isInvalidDailyDatePath(pathname: string): boolean {
 }
 
 /**
+ * The topic registry is finite and author-controlled. Reject unknown or nested
+ * slugs at the request boundary so they receive a literal 404 even though the
+ * app-wide loading boundary streams dynamic pages. Known-but-inactive topics
+ * still reach the page, where current public content determines visibility.
+ */
+export function isInvalidTopicPath(pathname: string): boolean {
+  if (pathname === "/topics" || pathname === "/topics/") return false;
+  if (!pathname.startsWith("/topics/")) return false;
+
+  const match = /^\/topics\/([^/]+)\/?$/.exec(pathname);
+  return !match || !TOPIC_SLUGS.some((slug) => slug === match[1]);
+}
+
+/**
  * Public item visibility must be enforced where rows are read, not only where a
  * route is rendered. That keeps archive, search, sitemap-derived dates, and any
  * future feed consumer from leaking a type whose dedicated route is closed.
@@ -72,3 +86,4 @@ export function isInvalidDailyDatePath(pathname: string): boolean {
 export function isPublicItemType(type: PublicItemType, enabledValue?: string): boolean {
   return type === "oss" && enabledValue === "true";
 }
+import { TOPIC_SLUGS } from "@/lib/topics";

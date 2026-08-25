@@ -3,17 +3,19 @@
 A text-first AI engineering desk: reviewed intelligence, technical writing, and a
 semi-automated research pipeline under Tharun Chowdary Malepati's byline.
 
-Five content types:
+Public content surfaces:
 
 | Section | Route | Sources |
 | --- | --- | --- |
-| AI News | `/news` | Ingestion continues; the uncurated public route is closed |
-| AI Models | `/models` | Ingestion continues; the uncurated public route is closed |
+| AI desk | `/ai` | Immutable, human-curated snapshots from approved News, Model, and gated OSS candidates |
+| Topic maps | `/topics/rag`, `/topics/agents`, `/topics/mcp` | Active only with verified Writing or enough explicitly tagged reviewed signal |
 | Open Source | `/open-source` | Approved GitHub releases; gated by `PUBLIC_RESEARCH_ENABLED` |
 | Daily | `/daily` | Human-reviewed, source-linked structured Daily Brief snapshots |
-| Blog | `/blog` | Verified MDX and reviewed database-native writing |
+| Writing | `/blog` | Verified MDX writing; automated Daily content is excluded |
+| Projects | `/projects` | Repository-backed case studies |
 
-`/resources` is always closed while it contains placeholders. `/submit` and pillar
+Raw `/news` and `/models` stay closed even though ingestion continues. `/resources`
+is always closed while it contains placeholders. `/submit` and pillar
 routes use the same research launch gate as Open Source. Closed content is filtered
 from Archive data and omitted from the sitemap; route middleware is not the only
 visibility boundary.
@@ -180,6 +182,19 @@ Daily is a separate, structured publication type; it is not an automatically gen
 Web publication does not send email or create a blog post. Newsletter delivery remains a separate,
 manual distribution action.
 
+## Curating the AI desk
+
+Approval is only moderation; it never makes a raw News or Model row public. In `/admin`, the
+editor rewrites an approved candidate's title and summary, selects an explicit category/topic,
+and writes the engineering consequence. Publishing freezes the exact source facts and reviewed
+copy into an immutable snapshot. If ingestion changes any reviewed input while the form is open,
+publication returns a conflict and requires a fresh review.
+
+`/ai`, active topic hubs, the homepage preview, sitemap, and `/api/search` read those snapshots
+only. Live score remains ranking metadata; ingestion can never rewrite public prose or source
+attribution after curation. A topic becomes public with one verified Writing entry or three
+explicitly tagged curated signals, so placeholder hubs remain 404/noindex.
+
 ---
 
 ## QA and deploys
@@ -201,18 +216,20 @@ assertions: **[gstack/README.md](gstack/README.md)**.
 
 ```
 app/
-  page.tsx                    personal desk + latest reviewed Daily/writing/project
+  page.tsx                    personal desk + latest reviewed Daily/writing/AI/project
   daily/[date]/               structured, human-reviewed Daily Brief snapshots
+  ai/                         immutable reviewed AI signal desk
+  topics/[slug]/              evidence-threshold topic maps
   news|models|open-source/    section feeds + item detail routes
   blog/[slug]/                MDX article
   pillars/[pillar]/           pillar hubs
   admin/                      approval console (HTTP Basic via proxy.ts)
   api/cron/{news,models,oss,rank,daily-digest,daily-write}/
-  api/{repurpose,subscribe,submit}/
-  api/admin/{digests,items,repurpose,submissions}/
+  api/{search,repurpose,subscribe,submit}/
+  api/admin/{curated-ai,digests,items,repurpose,submissions}/
 components/                   public desk, Daily Brief, feed, navigation, forms, and admin editors
 lib/
-  daily-{brief,publish,queries}.ts ranking.ts dedupe.ts ingest.ts queries.ts auth.ts llm.ts env.ts
+  daily-{brief,publish,queries}.ts curated-ai*.ts topics.ts search-index.ts ranking.ts dedupe.ts ingest.ts queries.ts auth.ts llm.ts env.ts
   adapters/                   one file per source, all behind IngestAdapter
   content/                    MDX loader (Zod-validated frontmatter) + DB mirror
   repurpose/                  reviewed, copy-ready draft generation

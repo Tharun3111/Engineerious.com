@@ -3,7 +3,23 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-type SearchItem = { slug: string; title: string; dek: string; pillar: string };
+import type { SearchItem, SearchItemKind } from "@/lib/search-index";
+
+const KIND_LABELS = {
+  writing: "Writing",
+  daily: "Daily",
+  signal: "AI signal",
+  topic: "Topic",
+  project: "Project",
+} satisfies Record<SearchItemKind, string>;
+
+function meaningfulFocusTarget(target: Element | null): target is HTMLElement {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target === document.body || target === document.documentElement) return false;
+  return target.matches(
+    'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]',
+  );
+}
 
 /**
  * Keyboard-first search. ⌘K / Ctrl+K or "/" opens it from anywhere on the
@@ -27,22 +43,30 @@ export function CommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
   const listboxId = useId();
   const router = useRouter();
 
   const close = useCallback(() => {
     setOpen(false);
     if (loadError) setItems(null);
-    window.setTimeout(() => triggerRef.current?.focus(), 0);
+    window.setTimeout(() => {
+      const target = restoreFocusRef.current;
+      if (target?.isConnected) target.focus();
+      else triggerRef.current?.focus();
+    }, 0);
   }, [loadError]);
 
   const openPalette = useCallback(() => {
+    restoreFocusRef.current = meaningfulFocusTarget(document.activeElement)
+      ? document.activeElement
+      : triggerRef.current;
     setQuery("");
     setActive(0);
     setLoadError(false);
     setOpen(true);
 
-    if (items === null) {
+    if (items === null || loadError) {
       fetch("/api/search")
         .then((res) => {
           if (!res.ok) throw new Error("Search index unavailable");
@@ -54,7 +78,7 @@ export function CommandPalette() {
           setLoadError(true);
         });
     }
-  }, [items]);
+  }, [items, loadError]);
 
   useEffect(() => {
     if (!open) return;
@@ -71,7 +95,11 @@ export function CommandPalette() {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
-      const typing = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA";
+      const typing =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.tagName === "SELECT" ||
+        target?.isContentEditable;
 
       if ((event.key === "k" || event.key === "K") && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
@@ -90,32 +118,35 @@ export function CommandPalette() {
 
   const filtered = (items ?? []).filter((item) => {
     if (!query.trim()) return true;
-    const haystack = `${item.title} ${item.dek} ${item.pillar}`.toLowerCase();
+    const haystack = [item.title, item.description, item.label, ...item.keywords]
+      .join(" ")
+      .toLocaleLowerCase("en-US");
     return haystack.includes(query.trim().toLowerCase());
   });
+  const activeIndex = filtered.length > 0 ? Math.min(active, filtered.length - 1) : 0;
 
   function go(item: SearchItem) {
     close();
-    router.push(`/blog/${item.slug}`);
+    router.push(item.href);
   }
 
   function onInputKey(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setActive((a) => Math.min(a + 1, Math.max(filtered.length - 1, 0)));
+      setActive(Math.min(activeIndex + 1, Math.max(filtered.length - 1, 0)));
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
-      setActive((a) => Math.max(a - 1, 0));
-    } else if (event.key === "Enter" && filtered[active]) {
+      setActive(Math.max(activeIndex - 1, 0));
+    } else if (event.key === "Enter" && filtered[activeIndex]) {
       event.preventDefault();
-      go(filtered[active]);
+      go(filtered[activeIndex]);
     }
   }
 
   function trapFocus(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "Tab") return;
-    const first = inputRef.current;
-    const last = closeRef.current;
+    const first = closeRef.current;
+    const last = inputRef.current;
     if (!first || !last) return;
 
     if (event.shiftKey && document.activeElement === first) {
@@ -127,7 +158,9 @@ export function CommandPalette() {
     }
   }
 
-  const activeOptionId = filtered[active] ? `${listboxId}-option-${active}` : undefined;
+  const activeOptionId = filtered[activeIndex]
+    ? `${listboxId}-option-${activeIndex}`
+    : undefined;
 
   return (
     <>
@@ -201,17 +234,20 @@ export function CommandPalette() {
               ) : (
                 filtered.map((item, i) => (
                   <li
-                    key={item.slug}
+                    key={item.id}
                     id={`${listboxId}-option-${i}`}
                     className="cmdk-item"
                     role="option"
-                    aria-selected={i === active}
-                    data-active={i === active}
+                    aria-selected={i === activeIndex}
+                    data-active={i === activeIndex}
                     onMouseEnter={() => setActive(i)}
                   >
                     <button type="button" tabIndex={-1} onClick={() => go(item)}>
                       <span className="t">{item.title}</span>
-                      <span className="g">{item.pillar}</span>
+                      <span className="g">
+                        {KIND_LABELS[item.kind]}
+                        {item.label ? ` · ${item.label}` : ""}
+                      </span>
                     </button>
                   </li>
                 ))

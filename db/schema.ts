@@ -109,6 +109,13 @@ export const items = pgTable(
     publishedAt: timestamp("published_at", { withTimezone: true }),
     rankedAt: timestamp("ranked_at", { withTimezone: true }),
     rawJson: jsonb("raw_json"),
+    /**
+     * Human-reviewed, immutable public copy. Ingestion may continue to update the
+     * live row, but /ai and topic pages render this snapshot exclusively.
+     */
+    curatedSnapshot: jsonb("curated_snapshot"),
+    curatedAt: timestamp("curated_at", { withTimezone: true }),
+    curatedBy: text("curated_by"),
   },
   (t) => [
     uniqueIndex("items_url_hash_key").on(t.urlHash),
@@ -116,6 +123,9 @@ export const items = pgTable(
     index("items_score_idx").on(t.score),
     index("items_published_idx").on(t.publishedAt),
     index("items_status_idx").on(t.status),
+    // Snapshot type is the immutable publication field. Status + live score
+    // supports the public filter/order even if ingestion later reclassifies row.type.
+    index("items_curated_visibility_idx").on(t.status, t.score),
   ],
 );
 

@@ -34,6 +34,7 @@ test("primary destinations are honest and linked", async ({ page, request }) => 
 
   await page.goto("/ai");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByText("Automation").first()).toBeVisible();
 
   await page.goto("/projects/engineerious");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Engineerious");
@@ -128,7 +129,37 @@ test("sitemap never advertises closed or utility routes and follows Daily visibi
   const dailyHtml = await daily.text();
   const dailyIsNoindex = /<meta[^>]+name="robots"[^>]+noindex/i.test(dailyHtml);
   expect(sitemap.includes("/daily")).toBe(!dailyIsNoindex);
+
+  const ai = await request.get("/ai");
+  const aiHtml = await ai.text();
+  const aiIsNoindex = /<meta[^>]+name="robots"[^>]+noindex/i.test(aiHtml);
+  expect(sitemap.includes("/ai")).toBe(!aiIsNoindex);
   expect(sitemap).toContain("/projects/engineerious");
+});
+
+test("public search navigates across content kinds and restores keyboard focus", async ({ page }) => {
+  await page.goto("/");
+  const trigger = page.getByRole("button", { name: "Search Engineerious" });
+
+  await page.keyboard.press("Control+K");
+  const input = page.getByRole("combobox", { name: "Search Engineerious" });
+  await expect(input).toBeFocused();
+  await input.fill("Engineerious");
+  await expect(page.getByRole("option").filter({ hasText: "Project" })).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/projects\/engineerious$/);
+
+  await page.goto("/");
+  await page.keyboard.press("Control+K");
+  await expect(page.getByRole("combobox", { name: "Search Engineerious" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(trigger).toBeFocused();
+});
+
+test("unknown topic slugs receive a literal non-indexable 404", async ({ request }) => {
+  const response = await request.get("/topics/not-a-topic");
+  expect(response.status()).toBe(404);
+  expect(response.headers()["x-robots-tag"]).toBe("noindex, nofollow");
 });
 
 test("private or invalid Daily snapshots never resolve as public dates", async ({ request }) => {

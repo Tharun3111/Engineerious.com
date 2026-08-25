@@ -57,6 +57,13 @@
       "when": 1787641334735,
       "tag": "0007_big_peter_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787644059161,
+      "tag": "0008_boring_piledriver",
+      "breakpoints": true
     }
   ]
 }

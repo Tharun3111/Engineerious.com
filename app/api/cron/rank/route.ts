@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { authorizeCron } from "@/lib/auth";
+import { CURATED_AI_CACHE_TAG } from "@/lib/curated-ai-queries";
 import { getDb } from "@/lib/db";
 import { FEED_CACHE_TAG } from "@/lib/queries";
 import { AGE_OFFSET_HOURS, GRAVITY, POINTS_OFFSET } from "@/lib/ranking";
@@ -44,6 +45,7 @@ export async function GET(request: Request) {
 
     // Ordering just changed, so the cached feed slices are stale by definition.
     revalidateTag(FEED_CACHE_TAG, "max");
+    revalidateTag(CURATED_AI_CACHE_TAG, { expire: 0 });
 
     return NextResponse.json({
       ok: true,

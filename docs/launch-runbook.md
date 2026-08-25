@@ -40,6 +40,21 @@ Public `/daily` routes and the sitemap read only valid published snapshots. Befo
 snapshot exists, `/daily` remains useful but `noindex`; dated drafts return 404. Publishing does not
 send a newsletter.
 
+## Publishing a curated AI signal
+
+1. Approve the ingestion candidate. This is moderation only and does not expose it publicly.
+2. In the Curated AI desk queue, verify the outbound source and every displayed source fact.
+3. Rewrite the title and summary, choose a category, tag only exact RAG/Agents/MCP membership,
+   and write the engineering consequence in “Why it matters.” Never copy the ingestion AI note.
+4. Publish the curated snapshot. If any reviewed source input changed while the form was open,
+   reload and review the new version; the API deliberately returns a conflict.
+5. To revise public copy, unpublish first and create a new reviewed snapshot. Public copy is never
+   edited in place.
+
+The AI desk, homepage, search, topic maps, and sitemap read immutable curated snapshots only.
+Live score may reorder them, but cannot change their prose or attribution. A topic route is linked
+or indexed only after one verified Writing entry or three explicitly tagged curated signals.
+
 ## Newsletter
 
 Postgres is the subscriber source of truth. Resend (`lib/resend.ts`) is optional for
@@ -67,4 +82,6 @@ confirm Open Source, Submit, and pillar routes return 404. With the flag set to
 `true`, confirm those three route families return 200 and rerun without
 `QA_GATE_CLOSED`. In both states, confirm News, Models, and Resources return 404;
 Blog, Daily, and Archive return 200; and the sitemap contains none of the always-closed
-or utility routes. `/daily` appears in the sitemap only after a valid published snapshot exists.
+or utility routes. `/daily` appears in the sitemap only after a valid published snapshot exists;
+`/ai` and topic hubs appear only after their reviewed-content thresholds are met. Confirm unknown
+topic slugs return a literal 404 and `/api/search` contains public kinds only.

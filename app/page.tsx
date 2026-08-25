@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AiSignalList } from "@/components/AiSignalList";
 import { EvidenceRail } from "@/components/EvidenceRail";
 import { NewsletterCTA } from "@/components/NewsletterCTA";
 import { ScopeBlock } from "@/components/ScopeBlock";
 import { getPublishedWritingPosts } from "@/lib/content/blog";
 import { currentDesk, type CurrentDeskEntry } from "@/lib/current-desk";
+import {
+  getCuratedAiSignals,
+  type CuratedAiQueryResult,
+} from "@/lib/curated-ai-queries";
 import { deriveDailyQuickSheet } from "@/lib/daily-brief";
 import {
   getLatestDailyBrief,
@@ -115,10 +120,35 @@ export function DailyHomeModule({ result }: { result: DailyBriefQueryResult }) {
   );
 }
 
+export function AiHomeModule({ result }: { result: CuratedAiQueryResult }) {
+  if (result.signals.length === 0) return null;
+
+  return (
+    <section aria-labelledby="ai-home-title">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-fg pb-3">
+        <div>
+          <p className="section-label">Important AI developments</p>
+          <h2 id="ai-home-title" className="font-display mt-1 text-[21px] font-semibold">
+            Reviewed signal, not a raw feed
+          </h2>
+        </div>
+        <Link
+          href="/ai"
+          className="inline-flex min-h-11 items-center font-mono text-[11.5px] font-medium text-accent hover:underline"
+        >
+          Open the AI desk <span aria-hidden="true">&nbsp;&rarr;</span>
+        </Link>
+      </div>
+      <AiSignalList signals={result.signals} error={result.error} />
+    </section>
+  );
+}
+
 export default async function HomePage() {
-  const [posts, latestDaily] = await Promise.all([
+  const [posts, latestDaily, curatedAi] = await Promise.all([
     getPublishedWritingPosts(),
     getLatestDailyBrief(),
+    getCuratedAiSignals({ limit: 3 }),
   ]);
   const latest = posts[0];
   const latestPillar = latest ? getPillar(latest.pillar) : undefined;
@@ -237,6 +267,8 @@ export default async function HomePage() {
           </div>
         )}
       </section>
+
+      <AiHomeModule result={curatedAi} />
 
       <section className="grid gap-8 border-y border-rule py-10 lg:grid-cols-[minmax(0,0.65fr)_minmax(0,1.35fr)] lg:gap-16" aria-labelledby="project-title">
         <div>
