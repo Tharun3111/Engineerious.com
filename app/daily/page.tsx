@@ -8,17 +8,44 @@ import {
   getLatestDailyBrief,
   publicDailyRobots,
 } from "@/lib/daily-queries";
+import { env } from "@/lib/env";
 
 export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
   const { brief } = await getLatestDailyBrief();
+  const description =
+    brief?.brief.summary ??
+    "A human-reviewed daily AI engineering brief: what changed, why it matters, source links, and Tharun's take.";
   return {
     title: "Daily AI Brief",
-    description:
-      "A human-reviewed daily AI engineering brief: what changed, why it matters, source links, and Tharun's take.",
+    description,
     alternates: { canonical: "/daily" },
     robots: publicDailyRobots(Boolean(brief)),
+    openGraph: brief
+      ? {
+          type: "website",
+          title: brief.brief.title,
+          description,
+          url: "/daily",
+          images: [
+            {
+              url: `/daily/${brief.date}/opengraph-image`,
+              width: 1200,
+              height: 630,
+              alt: `Engineerious Daily Brief for ${brief.date}`,
+            },
+          ],
+        }
+      : undefined,
+    twitter: brief
+      ? {
+          card: "summary_large_image",
+          title: brief.brief.title,
+          description,
+          images: [`/daily/${brief.date}/opengraph-image`],
+        }
+      : undefined,
   };
 }
 
@@ -86,7 +113,10 @@ export default async function DailyPage() {
 
   return (
     <div className="mx-auto max-w-5xl py-10 sm:py-14">
-      <DailyBrief brief={latest.brief} />
+      <DailyBrief
+        brief={latest.brief}
+        shareUrl={`${env.siteUrl.replace(/\/$/, "")}/daily/${latest.date}`}
+      />
 
       {previous.length ? (
         <section aria-labelledby="daily-archive-title" className="mt-14 border-t border-fg pt-7">

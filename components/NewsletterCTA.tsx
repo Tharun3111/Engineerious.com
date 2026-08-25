@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 
 type Status = "idle" | "submitting" | "ok" | "error";
 
@@ -21,7 +21,9 @@ export function NewsletterCTA({
    *  H1 immediately above this component, so the two don't repeat each other. */
   hideHeading?: boolean;
 }) {
+  const fieldId = useId();
   const [email, setEmail] = useState("");
+  const [company, setCompany] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
 
@@ -34,16 +36,20 @@ export function NewsletterCTA({
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, company }),
       });
-      const body = (await res.json()) as { ok?: boolean; error?: string };
+      const body = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+      };
 
       if (!res.ok || !body.ok) {
         throw new Error(body.error ?? "We couldn't add this email. Try again in a few minutes.");
       }
       setStatus("ok");
-      setMessage("You're subscribed. We'll email you when there's something worth sharing.");
+      setMessage("Thanks. Your signup request has been received.");
       setEmail("");
+      setCompany("");
     } catch (error) {
       setStatus("error");
       setMessage(
@@ -82,16 +88,21 @@ export function NewsletterCTA({
           {blurb}
         </p>
 
-        <form onSubmit={onSubmit} className="mt-6 max-w-2xl">
-          <label htmlFor="newsletter-email" className="block text-[14px] font-semibold text-fg">
+        <form
+          onSubmit={onSubmit}
+          className="relative mt-6 max-w-2xl"
+          aria-busy={status === "submitting"}
+        >
+          <label htmlFor={`${fieldId}-email`} className="block text-[14px] font-semibold text-fg">
             Email address
           </label>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <input
-              id="newsletter-email"
+              id={`${fieldId}-email`}
               name="email"
               type="email"
               required
+              maxLength={320}
               autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
@@ -102,13 +113,29 @@ export function NewsletterCTA({
               {status === "submitting" ? "Subscribing…" : "Subscribe for updates"}
             </button>
           </div>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -left-[10000px] top-auto h-px w-px overflow-hidden opacity-0"
+          >
+            <label htmlFor={`${fieldId}-company`}>Company</label>
+            <input
+              id={`${fieldId}-company`}
+              name="company"
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+              value={company}
+              onChange={(event) => setCompany(event.target.value)}
+            />
+          </div>
         </form>
 
         {message && (
           <p
             role="status"
             data-subscribe-status={status}
-            className={`mt-3 text-[14px] ${status === "error" ? "font-medium text-[#9b2c1f]" : "text-muted"}`}
+            aria-live="polite"
+            className={`mt-3 text-[14px] ${status === "error" ? "font-medium text-alarm" : "text-muted"}`}
           >
             {message}
           </p>

@@ -6,6 +6,7 @@ import "@fontsource-variable/martian-mono/wght.css";
 import { Footer } from "@/components/Footer";
 import { JsonLd } from "@/components/JsonLd";
 import { Nav } from "@/components/Nav";
+import { PrivacyAnalytics } from "@/components/PrivacyAnalytics";
 import { env } from "@/lib/env";
 import { AUTHOR_NAME, SITE_NAME } from "@/lib/site";
 import "./globals.css";
@@ -103,6 +104,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
         <Footer />
+        <PrivacyAnalytics />
       </body>
     </html>
   );

@@ -9,6 +9,10 @@ import {
 } from "@/components/AdminQueue";
 import { DailyDigestEditor } from "@/components/DailyDigestEditor";
 import {
+  NewsletterQueue,
+  SubscriberDeliveryQueue,
+} from "@/components/NewsletterQueue";
+import {
   factualContentHash,
   myTakeContentHash,
   parseDailyBriefDraft,
@@ -17,8 +21,10 @@ import { getPostRow } from "@/lib/content/sync";
 import { getCuratedAiAdminQueue } from "@/lib/curated-ai-queries";
 import { getPendingDigests, getPendingItems, getRepurposeQueue, getSubmissions } from "@/lib/queries";
 import { llmConfigured } from "@/lib/llm";
-import { resendConfigured } from "@/lib/resend";
+import { getNewsletterQueue } from "@/lib/newsletter-queries";
+import { newsletterDeliveryConfigured } from "@/lib/resend";
 import { reviewSchema } from "@/lib/review";
+import { getSubscriberDeliveryQueue } from "@/lib/subscriber-queries";
 
 export const dynamic = "force-dynamic";
 
@@ -29,12 +35,22 @@ export const metadata: Metadata = {
 
 /** Gated by HTTP Basic in proxy.ts. Nothing here is reachable unauthenticated. */
 export default async function AdminPage() {
-  const [pending, queue, subs, pendingDigests, curatedAi] = await Promise.all([
+  const [
+    pending,
+    queue,
+    subs,
+    pendingDigests,
+    curatedAi,
+    newsletterQueue,
+    subscriberDelivery,
+  ] = await Promise.all([
     getPendingItems(),
     getRepurposeQueue(),
     getSubmissions(),
     getPendingDigests(),
     getCuratedAiAdminQueue(),
+    getNewsletterQueue(),
+    getSubscriberDeliveryQueue(),
   ]);
 
   const legacyDigests = pendingDigests.digests.filter((digest) => !digest.dailyDraft);
@@ -94,7 +110,7 @@ export default async function AdminPage() {
         <h1 className="text-[24px] font-bold tracking-tight">Admin</h1>
         <p className="font-mono text-[12px] text-muted">
           distribution: manual LinkedIn/Instagram copy · llm: {llmConfigured() ? "configured" : "not configured"}
-          {" · "}newsletter: {resendConfigured() ? "configured" : "not configured"}
+          {" · "}newsletter delivery: {newsletterDeliveryConfigured() ? "configured" : "not configured"}
         </p>
       </header>
 
@@ -120,6 +136,45 @@ export default async function AdminPage() {
           ) : (
             <p className="text-[13.5px] text-muted">No structured Daily Briefs awaiting review.</p>
           )}
+        </div>
+      </section>
+
+      <section className="card p-5">
+        <h2 className="text-[15px] font-semibold">
+          Newsletter outbox{" "}
+          <span className="font-mono text-[12px] font-normal text-muted">
+            ({newsletterQueue.newsletters.length})
+          </span>
+        </h2>
+        <p className="mt-1 max-w-3xl text-[13px] leading-5 text-muted">
+          Prepare an email from a published structured Daily snapshot, review its exact preview,
+          approve it, then send it as a separate action. Web publication never sends email.
+        </p>
+        <div className="mt-4">
+          <NewsletterQueue
+            newsletters={newsletterQueue.newsletters}
+            error={newsletterQueue.error}
+          />
+        </div>
+      </section>
+
+      <section className="card p-5">
+        <h2 className="text-[15px] font-semibold">
+          Subscriber delivery repair{" "}
+          <span className="font-mono text-[12px] font-normal text-muted">
+            ({subscriberDelivery.total})
+          </span>
+        </h2>
+        <p className="mt-1 max-w-3xl text-[13px] leading-5 text-muted">
+          Retry only active captured addresses that never received a provider contact ID. This
+          queue must be empty before a newsletter send can be claimed.
+        </p>
+        <div className="mt-4">
+          <SubscriberDeliveryQueue
+            subscribers={subscriberDelivery.subscribers}
+            total={subscriberDelivery.total}
+            error={subscriberDelivery.error}
+          />
         </div>
       </section>
 

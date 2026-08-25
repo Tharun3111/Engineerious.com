@@ -179,8 +179,23 @@ Daily is a separate, structured publication type; it is not an automatically gen
 5. Public routes read `daily_published` only. Drafts never become a fallback when data is missing
    or invalid.
 
-Web publication does not send email or create a blog post. Newsletter delivery remains a separate,
-manual distribution action.
+Web publication does not send email or create a blog post. Newsletter delivery remains a separate
+outbox in `/admin`:
+
+1. Prepare deterministic email HTML from the immutable published Daily snapshot.
+2. Save the subject and inspect the exact email in the sandboxed preview.
+3. Approve that subject and HTML as one revision.
+4. Send with a separate, confirmed action. Any active captured subscriber without a Resend contact
+   ID blocks the send claim.
+5. Reconcile `sending` or `queued` records against their stored provider broadcast ID. Never retry
+   an uncertain send or create a replacement broadcast.
+
+The public signup path normalizes addresses and writes the Postgres capture ledger before trying
+Resend. Every accepted request returns the same generic receipt, whether the address is new,
+already synced, pending repair, or opted out at the provider; public responses never reveal that
+state. Known provider contacts are not mutated by duplicate public submissions. `/admin` exposes a
+bounded, one-contact retry queue only for rows that never received a provider contact ID. The site
+does not reactivate an opted-out address without a future email-ownership confirmation flow.
 
 ## Curating the AI desk
 
@@ -226,10 +241,10 @@ app/
   admin/                      approval console (HTTP Basic via proxy.ts)
   api/cron/{news,models,oss,rank,daily-digest,daily-write}/
   api/{search,repurpose,subscribe,submit}/
-  api/admin/{curated-ai,digests,items,repurpose,submissions}/
+  api/admin/{curated-ai,digests,items,newsletters,repurpose,subscribers,submissions}/
 components/                   public desk, Daily Brief, feed, navigation, forms, and admin editors
 lib/
-  daily-{brief,publish,queries}.ts curated-ai*.ts topics.ts search-index.ts ranking.ts dedupe.ts ingest.ts queries.ts auth.ts llm.ts env.ts
+  daily-{brief,publish,queries}.ts curated-ai*.ts newsletter*.ts subscriber*.ts topics.ts search-index.ts ranking.ts dedupe.ts ingest.ts queries.ts auth.ts llm.ts env.ts
   adapters/                   one file per source, all behind IngestAdapter
   content/                    MDX loader (Zod-validated frontmatter) + DB mirror
   repurpose/                  reviewed, copy-ready draft generation

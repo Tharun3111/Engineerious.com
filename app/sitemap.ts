@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { getArchiveIndex } from "@/lib/content/archive";
-import { getPublishedPosts, isWritingPost } from "@/lib/content/blog";
+import { getPublishedWritingPosts } from "@/lib/content/blog";
 import { getCuratedAiCorpus } from "@/lib/curated-ai-queries";
 import {
   getDailyBriefArchive,
@@ -83,33 +83,43 @@ export function buildAiSitemapEntries(
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const site = env.siteUrl.replace(/\/$/, "");
-  const now = new Date();
   const [posts, archiveDays, dailyArchive, curatedResult] = await Promise.all([
-    getPublishedPosts(),
+    getPublishedWritingPosts(),
     getArchiveIndex(),
     getDailyBriefArchive(100),
     getCuratedAiCorpus(),
   ]);
   const dailyEntries = buildDailySitemapEntries(site, dailyArchive.briefs);
-  const writing = posts.filter(isWritingPost);
-  const aiEntries = buildAiSitemapEntries(site, writing, curatedResult.signals);
+  const aiEntries = buildAiSitemapEntries(site, posts, curatedResult.signals);
 
   const gated: MetadataRoute.Sitemap = env.publicResearchEnabled
     ? [
-        { url: `${site}/open-source`, lastModified: now, changeFrequency: "daily" as const, priority: 0.7 },
+        { url: `${site}/open-source`, changeFrequency: "daily" as const, priority: 0.7 },
       ]
     : [];
 
   return [
-    { url: `${site}/`, lastModified: now, changeFrequency: "weekly", priority: 1 },
-    { url: `${site}/blog`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.9 },
-    { url: `${site}/archive`, lastModified: now, changeFrequency: "daily" as const, priority: 0.6 },
+    { url: `${site}/`, changeFrequency: "weekly", priority: 1 },
+    {
+      url: `${site}/blog`,
+      ...(posts[0] ? { lastModified: posts[0].date } : {}),
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
+    },
+    {
+      url: `${site}/archive`,
+      ...(posts[0] ? { lastModified: posts[0].date } : {}),
+      changeFrequency: "daily" as const,
+      priority: 0.6,
+    },
     // Per-day pages are self-canonical (they show a summary + link, not the full post
     // body, so it's genuinely distinct content, not a duplicate of /blog/[slug]) — low
     // priority since it's a browse-by-date view, not competing with the primary permalink.
     ...archiveDays.map((day) => ({
       url: `${site}/archive/${day.date}`,
-      lastModified: now,
+      ...(day.posts[0] ? {
+        lastModified: new Date(Math.max(...day.posts.map((post) => post.date.getTime()))),
+      } : {}),
       changeFrequency: "yearly" as const,
       priority: 0.3,
     })),
@@ -121,18 +131,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       })),
     ...dailyEntries,
     ...aiEntries,
-    { url: `${site}/projects`, lastModified: now, changeFrequency: "monthly" as const, priority: 0.8 },
+    { url: `${site}/projects`, changeFrequency: "monthly" as const, priority: 0.8 },
     ...projects.map((project) => ({
       url: `${site}/projects/${project.slug}`,
-      lastModified: now,
       changeFrequency: "monthly" as const,
       priority: 0.75,
     })),
     ...gated,
-    { url: `${site}/about`, lastModified: now, changeFrequency: "monthly" as const, priority: 0.8 },
-    { url: `${site}/subscribe`, lastModified: now, changeFrequency: "monthly" as const, priority: 0.7 },
-    { url: `${site}/editorial-standards`, lastModified: now, changeFrequency: "yearly" as const, priority: 0.4 },
-    { url: `${site}/corrections`, lastModified: now, changeFrequency: "yearly" as const, priority: 0.4 },
-    { url: `${site}/ethics`, lastModified: now, changeFrequency: "yearly" as const, priority: 0.4 },
+    { url: `${site}/about`, changeFrequency: "monthly" as const, priority: 0.8 },
+    { url: `${site}/subscribe`, changeFrequency: "monthly" as const, priority: 0.7 },
+    { url: `${site}/privacy`, changeFrequency: "yearly" as const, priority: 0.4 },
+    { url: `${site}/editorial-standards`, changeFrequency: "yearly" as const, priority: 0.4 },
+    { url: `${site}/corrections`, changeFrequency: "yearly" as const, priority: 0.4 },
+    { url: `${site}/ethics`, changeFrequency: "yearly" as const, priority: 0.4 },
   ];
 }

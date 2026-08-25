@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { DailyQuickSheet } from "@/components/DailyQuickSheet";
+import { ShareActions } from "@/components/ShareActions";
 import type { PublishedDailyBrief } from "@/lib/daily-brief";
 
 const categoryLabels = {
@@ -73,7 +74,7 @@ function DailyModule({ module }: { module: BriefModule }) {
   );
 }
 
-export function DailyBrief({ brief }: { brief: PublishedDailyBrief }) {
+export function DailyBrief({ brief, shareUrl }: { brief: PublishedDailyBrief; shareUrl: string }) {
   const modules: BriefModule[] = [];
   if (brief.oneThingToLearn) {
     modules.push({
@@ -125,8 +126,12 @@ export function DailyBrief({ brief }: { brief: PublishedDailyBrief }) {
           {brief.title}
         </h1>
         <p className="mt-4 max-w-[65ch] text-[16px] leading-7 text-muted">{brief.summary}</p>
-        <p className="mt-5 font-mono text-[11px] uppercase tracking-[0.1em] text-muted">
+        <p className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted">
           <time dateTime={brief.date}>{formatEditorialDate(brief.date)}</time>
+          <span aria-hidden="true">/</span>
+          <Link href={`/daily/${brief.date}`} className="inline-flex min-h-11 items-center text-accent hover:underline">
+            Permanent issue
+          </Link>
         </p>
       </header>
 
@@ -194,6 +199,14 @@ export function DailyBrief({ brief }: { brief: PublishedDailyBrief }) {
           Tharun&rsquo;s Take
         </h2>
         <p className="mt-3 max-w-[68ch] text-[16px] leading-8 text-fg">{brief.myTake}</p>
+      </section>
+
+      <section aria-labelledby="share-daily-title" className="border-y border-rule py-6">
+        <h2 id="share-daily-title" className="section-label">Share this issue</h2>
+        <p className="mt-2 max-w-[62ch] text-[14.5px] leading-6 text-muted">
+          Share the dated edition, so the link always resolves to this reviewed snapshot.
+        </p>
+        <ShareActions title={brief.title} text={brief.summary} url={shareUrl} />
       </section>
     </article>
   );

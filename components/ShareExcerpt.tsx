@@ -1,9 +1,11 @@
-export function ShareExcerpt({ dek, url }: { dek: string; url: string }) {
+import { ShareActions } from "@/components/ShareActions";
+
+export function ShareExcerpt({ title, dek, url }: { title: string; dek: string; url: string }) {
   return (
-    <div className="max-w-[68ch] border border-rule px-5 py-4">
-      <p className="section-label">Share this</p>
+    <section aria-labelledby="share-writing-title" className="max-w-[68ch] border border-rule px-5 py-4">
+      <h2 id="share-writing-title" className="section-label">Share this</h2>
       <p className="mt-2.5 text-[15px] leading-7 text-fg">{dek}</p>
-      <p className="mt-2 font-mono text-[12.5px] text-accent-strong">{url}</p>
-    </div>
+      <ShareActions title={title} text={dek} url={url} />
+    </section>
   );
 }

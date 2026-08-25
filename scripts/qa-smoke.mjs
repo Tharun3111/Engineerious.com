@@ -51,6 +51,7 @@ const ROUTES = [
         { path: "/api/submit", method: "POST", body: {}, expect: 400 },
       ]),
   { path: "/about", newsletter: true },
+  { path: "/privacy", contains: "Privacy, in plain language." },
   { path: "/subscribe", newsletter: true },
   { path: "/rss.xml", contains: "<rss" },
   {
@@ -62,6 +63,8 @@ const ROUTES = [
   { path: "/admin", expectOneOf: [401, 503] },
   { path: "/api/admin/digests", method: "POST", body: {}, expectOneOf: [401, 503] },
   { path: "/api/admin/curated-ai", method: "POST", body: {}, expectOneOf: [401, 503] },
+  { path: "/api/admin/newsletters", method: "POST", body: {}, expectOneOf: [401, 503] },
+  { path: "/api/admin/subscribers", method: "POST", body: {}, expectOneOf: [401, 503] },
   { path: "/api/cron/news", expect: 401 },
   { path: "/api/cron/models", expect: 401 },
   { path: "/api/cron/oss", expect: 401 },

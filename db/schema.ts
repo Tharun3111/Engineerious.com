@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   doublePrecision,
   index,
@@ -62,6 +64,15 @@ export const digestStatusEnum = pgEnum("digest_status", [
   "published",
   "rejected",
   "failed",
+]);
+export const newsletterStatusEnum = pgEnum("newsletter_status", [
+  "draft",
+  "approved",
+  "sending",
+  "queued",
+  "sent",
+  "failed",
+  "canceled",
 ]);
 
 /**
@@ -242,8 +253,23 @@ export const digests = pgTable(
     date: date("date").notNull(),
     status: digestStatusEnum("status").notNull().default("generating"),
     blogPostSlug: text("blog_post_slug"),
-    /** Digest-email HTML body, rendered once at write time, sent verbatim on approve. */
+    /** Server-rendered outbox artifact. Newsletter prepare/save regenerates it from dailyPublished. */
     emailHtml: text("email_html"),
+    /**
+     * Newsletter delivery is a separate, human-approved outbox. Web publication
+     * never changes this state, and existing digests remain null until prepared.
+     */
+    newsletterStatus: newsletterStatusEnum("newsletter_status"),
+    newsletterSubject: text("newsletter_subject"),
+    newsletterVersion: integer("newsletter_version").notNull().default(0),
+    /** SHA-256 of the exact subject + deterministic emailHtml approved for send. */
+    newsletterApprovedHash: text("newsletter_approved_hash"),
+    newsletterApprovedAt: timestamp("newsletter_approved_at", { withTimezone: true }),
+    newsletterApprovedBy: text("newsletter_approved_by"),
+    /** Persisted before the separate provider send call; the external idempotency boundary. */
+    newsletterBroadcastId: text("newsletter_broadcast_id"),
+    newsletterClaimedAt: timestamp("newsletter_claimed_at", { withTimezone: true }),
+    newsletterError: text("newsletter_error"),
     stockSummary: jsonb("stock_summary"),
     /** Stage 4 output — structured flags the human reviews before approving. */
     reviewReport: jsonb("review_report"),
@@ -277,8 +303,10 @@ export const digests = pgTable(
   },
   (t) => [
     uniqueIndex("digests_date_key").on(t.date),
+    uniqueIndex("digests_newsletter_broadcast_id_key").on(t.newsletterBroadcastId),
     index("digests_status_idx").on(t.status),
     index("digests_status_date_idx").on(t.status, t.date),
+    index("digests_newsletter_status_date_idx").on(t.newsletterStatus, t.date),
   ],
 );
 
@@ -342,9 +370,9 @@ export const stockQuotes = pgTable(
 );
 
 /**
- * Source of truth for newsletter recipients. Postgres row is written synchronously on
- * signup regardless of whether the Resend API call succeeds — `resendContactId` is
- * filled in best-effort so a transient Resend outage never loses a signup.
+ * Durable signup and synchronization ledger. Postgres captures every request before
+ * provider work, while the Resend segment remains authoritative for delivery-time
+ * unsubscribe state. `resendContactId` null means an active row still needs syncing.
  */
 export const subscribers = pgTable(
   "subscribers",
@@ -352,10 +380,15 @@ export const subscribers = pgTable(
     id: serial("id").primaryKey(),
     email: text("email").notNull(),
     resendContactId: text("resend_contact_id"),
+    resendSyncAttemptedAt: timestamp("resend_sync_attempted_at", { withTimezone: true }),
+    resendSyncError: text("resend_sync_error"),
     subscribedAt: timestamp("subscribed_at", { withTimezone: true }).notNull().defaultNow(),
     unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
   },
-  (t) => [uniqueIndex("subscribers_email_key").on(t.email)],
+  (t) => [
+    uniqueIndex("subscribers_email_key").on(t.email),
+    check("subscribers_email_canonical_check", sql`${t.email} = lower(btrim(${t.email}))`),
+  ],
 );
 
 export type Item = typeof items.$inferSelect;
@@ -371,3 +404,4 @@ export type Subscriber = typeof subscribers.$inferSelect;
 export type ItemType = (typeof itemTypeEnum.enumValues)[number];
 export type Platform = (typeof platformEnum.enumValues)[number];
 export type DigestStatus = (typeof digestStatusEnum.enumValues)[number];
+export type NewsletterStatus = (typeof newsletterStatusEnum.enumValues)[number];

@@ -30,6 +30,8 @@ export const env = {
   resendApiKey: process.env.RESEND_API_KEY,
   resendSegmentId: process.env.RESEND_SEGMENT_ID,
   resendFromAddress: process.env.RESEND_FROM_ADDRESS,
+  /** Required in every delivered email footer; broadcasts fail closed without it. */
+  newsletterPostalAddress: process.env.NEWSLETTER_POSTAL_ADDRESS,
 
   /** Daily-digest pipeline. See lib/adapters/tavily.ts, lib/stocks.ts, lib/research.ts. */
   tavilyApiKey: process.env.TAVILY_API_KEY,

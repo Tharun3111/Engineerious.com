@@ -169,6 +169,16 @@ test("private or invalid Daily snapshots never resolve as public dates", async (
   }
 });
 
+test("privacy disclosure is public and linked from the site footer", async ({ page, request }) => {
+  const response = await request.get("/privacy");
+  expect(response.status()).toBe(200);
+
+  await page.goto("/privacy");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Privacy, in plain language.");
+  await expect(page.getByRole("heading", { name: "Page analytics" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
+});
+
 test("newsletter error is truthful and recoverable", async ({ page }) => {
   await page.route("**/api/subscribe", async (route) => {
     await route.fulfill({
@@ -214,7 +224,7 @@ test("newsletter prevents duplicate submits while the provider is slow", async (
   await expect(page.getByRole("button", { name: "Subscribing…" })).toBeDisabled();
   releaseResponse();
   await expect(page.getByRole("status")).toHaveText(
-    "You're subscribed. We'll email you when there's something worth sharing.",
+    "Thanks. Your signup request has been received.",
   );
   await expect(page.getByLabel("Email address")).toHaveValue("");
   expect(requests).toBe(1);

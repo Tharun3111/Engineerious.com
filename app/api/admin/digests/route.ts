@@ -103,6 +103,7 @@ function revalidateDaily(date: string): void {
   revalidatePath("/daily");
   revalidatePath(`/daily/${date}`);
   revalidatePath("/sitemap.xml");
+  revalidatePath("/rss.xml");
 }
 
 async function finishDailyPublication(date: string): Promise<void> {

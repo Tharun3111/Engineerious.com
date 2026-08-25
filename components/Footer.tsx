@@ -14,6 +14,7 @@ const EXPLORE = [
 ] as const;
 
 const LEGAL = [
+  { href: "/privacy", label: "Privacy" },
   { href: "/editorial-standards", label: "Editorial standards" },
   { href: "/corrections", label: "Corrections" },
   { href: "/ethics", label: "Ethics" },

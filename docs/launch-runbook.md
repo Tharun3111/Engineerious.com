@@ -57,12 +57,47 @@ or indexed only after one verified Writing entry or three explicitly tagged cura
 
 ## Newsletter
 
-Postgres is the subscriber source of truth. Resend (`lib/resend.ts`) is optional for
-contact sync and delivery; a valid signup is still captured when Resend is absent or
-temporarily unavailable. Beehiiv remains only an optional passive embed
-(`NEXT_PUBLIC_BEEHIIV_EMBED_URL`). Approving a digest publishes the web artifact only.
-Newsletter delivery requires its own reviewed, idempotent action; it is never coupled
-to web approval.
+Postgres is the durable subscriber capture and sync ledger. Resend (`lib/resend.ts`) remains
+authoritative for provider-side unsubscribe state. A valid signup is stored before provider work,
+even when Resend is absent or temporarily unavailable. Every accepted public request returns the
+same generic receipt; new, existing, pending, and provider-opted-out states are never exposed.
+Duplicate public submissions do not mutate known provider contacts or reactivate an opt-out.
+Resubscription needs a future email-ownership confirmation flow. Provider sync details remain in
+the authenticated admin queue.
+Beehiiv remains only an optional passive embed (`NEXT_PUBLIC_BEEHIIV_EMBED_URL`).
+
+Approving or publishing a Daily Brief never sends email. Operate the separate outbox in `/admin`:
+
+1. Prepare a newsletter from a valid published structured Daily snapshot.
+2. Save the subject and review the exact sandboxed preview.
+3. Approve the exact subject and deterministic HTML.
+4. Clear the Subscriber delivery repair queue. Retry one unsynced captured address at a time. This
+   admin retry never touches an address that already has a Resend contact ID, so it cannot override
+   a provider-side unsubscribe.
+5. Confirm Send newsletter. The server creates and persists a provider draft before issuing the
+   separate send request.
+6. If the outbox remains `sending` or `queued` and has a stored broadcast ID, use Reconcile
+   provider. If no ID was recorded after an uncertain creation response, inspect Resend manually.
+   Never click Send again or create a replacement after an uncertain response.
+
+Broadcasts require `NEWSLETTER_POSTAL_ADDRESS` plus the configured Resend sender and segment. Every
+broadcast includes the provider unsubscribe link. Delivery fails closed when any required value is
+absent.
+
+## Public distribution, search metadata, and privacy
+
+- Share controls always use a permanent public URL. The rolling `/daily` page shares its immutable
+  `/daily/YYYY-MM-DD` edition; native Web Share falls back to copying that URL, while email,
+  LinkedIn, and X remain user-initiated links.
+- Dated Daily metadata, Article/Breadcrumb structured data, and its social image are generated only
+  after the same validated `daily_published` lookup as the page. An unpublished or malformed date
+  returns 404 instead of exposing draft text through a preview image.
+- `/rss.xml` contains verified Writing plus immutable Daily snapshots only. Publication revalidates
+  the feed. Sitemap `lastmod` values come from real publication or curation instants; static pages
+  omit the field rather than claiming the deployment time is a content edit.
+- Base Vercel Web Analytics accepts pageviews only. The client boundary strips query strings and
+  fragments, drops `/admin`, and rejects custom events. Search text and newsletter addresses are
+  never analytics properties. Keep `/privacy` accurate before adding any new measurement tool.
 
 ## Distribution (LinkedIn + Instagram)
 

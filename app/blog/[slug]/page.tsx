@@ -35,20 +35,30 @@ export async function generateMetadata({
   if (!post || !isVisible(post)) return {};
 
   const site = env.siteUrl.replace(/\/$/, "");
+  const permalink = `${site}/blog/${post.slug}`;
+  const canonicalUrl = post.canonical ?? permalink;
+  const image = `${permalink}/opengraph-image`;
 
   return {
     title: post.title,
     description: post.dek,
-    alternates: { canonical: post.canonical ?? `/blog/${post.slug}` },
+    alternates: { canonical: canonicalUrl },
     authors: [{ name: AUTHOR_NAME }],
     openGraph: {
       type: "article",
       title: post.title,
       description: post.dek,
-      url: `${site}/blog/${post.slug}`,
+      url: canonicalUrl,
       publishedTime: post.date.toISOString(),
       authors: [AUTHOR_NAME],
       tags: post.tags,
+      images: [{ url: image, width: 1200, height: 630, alt: post.title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.dek,
+      images: [image],
     },
   };
 }
@@ -184,7 +194,11 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         <p className="font-mono text-[12px] text-muted">{post.tags.map((t) => `#${t}`).join(" ")}</p>
       )}
 
-      <ShareExcerpt dek={post.dek} url={post.canonical ?? `${env.siteUrl.replace(/\/$/, "")}/blog/${post.slug}`} />
+      <ShareExcerpt
+        title={post.title}
+        dek={post.dek}
+        url={post.canonical ?? `${env.siteUrl.replace(/\/$/, "")}/blog/${post.slug}`}
+      />
 
       {distribution.length > 0 && (
         <section className="border-t border-rule pt-5">

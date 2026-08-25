@@ -5,9 +5,11 @@ import { cache } from "react";
 
 import { AiSignalList } from "@/components/AiSignalList";
 import { EvidenceRail } from "@/components/EvidenceRail";
+import { JsonLd } from "@/components/JsonLd";
 import { getPublishedWritingPosts } from "@/lib/content/blog";
 import { getCuratedAiCorpus } from "@/lib/curated-ai-queries";
-import { buildTopicActivity, getTopic } from "@/lib/topics";
+import { env } from "@/lib/env";
+import { buildTopicActivity, getTopic, type TopicDefinition } from "@/lib/topics";
 import { isoDate } from "@/lib/time";
 
 export const revalidate = 300;
@@ -16,6 +18,24 @@ type TopicPageProps = { params: Promise<{ slug: string }> };
 
 export function topicPageRobots(active: boolean): Metadata["robots"] {
   return active ? { index: true, follow: true } : { index: false, follow: false };
+}
+
+export function topicBreadcrumbJsonLd(topic: TopicDefinition) {
+  const site = env.siteUrl.replace(/\/$/, "");
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Engineerious", item: site },
+      { "@type": "ListItem", position: 2, name: "AI desk", item: `${site}/ai` },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: topic.label,
+        item: `${site}/topics/${topic.slug}`,
+      },
+    ],
+  };
 }
 
 const loadTopicPage = cache(async (slug: string) => {
@@ -75,6 +95,7 @@ export default async function TopicPage({ params }: TopicPageProps) {
 
   return (
     <div className="mx-auto max-w-5xl py-10 sm:py-14">
+      <JsonLd data={topicBreadcrumbJsonLd(topic)} />
       <header className="border-b border-fg pb-9">
         <nav aria-label="Breadcrumb">
           <ol className="flex flex-wrap items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.09em] text-muted">

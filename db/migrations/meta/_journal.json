@@ -64,6 +64,13 @@
       "when": 1787644059161,
       "tag": "0008_boring_piledriver",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787656778588,
+      "tag": "0009_perpetual_warpath",
+      "breakpoints": true
     }
   ]
 }
