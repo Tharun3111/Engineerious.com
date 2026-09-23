@@ -130,7 +130,7 @@ describe("targeted blog slug reads", () => {
   });
 
   it("logs and drops malformed legacy DB-native rows instead of projecting them", async () => {
-    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const malformed = [
       dbRow("invalid-origin", { origin: "legacy_unknown" }),
       dbRow("unsigned-verified", { reviewedBy: null, reviewedAt: null }),
@@ -143,8 +143,8 @@ describe("targeted blog slug reads", () => {
       await expect(getPost(row.slug)).resolves.toBeNull();
     }
 
-    expect(error).toHaveBeenCalledTimes(4);
-    expect(error.mock.calls.map((call) => String(call[0])).join("\n")).toContain(
+    expect(warning).toHaveBeenCalledTimes(4);
+    expect(warning.mock.calls.map((call) => String(call[0])).join("\n")).toContain(
       "ignored malformed DB-native post",
     );
   });
