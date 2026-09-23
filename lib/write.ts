@@ -1,14 +1,24 @@
 import { z } from "zod";
 
 import { complete, PRAGMATIC_PRACTITIONER } from "@/lib/llm";
+import {
+  collectDailySourceUrls,
+  createDailyStoryId,
+  generatedDailyBriefSchema,
+  parseGeneratedDailyBrief,
+  type GeneratedDailyBrief,
+} from "@/lib/daily-brief";
+import { assertNoFabricatedExperience } from "@/lib/content/frontmatter";
 import { PILLAR_SLUGS, type PillarSlug } from "@/lib/pillars";
 import type { Finding } from "@/lib/research";
 import type { StockQuote } from "@/lib/stocks";
 import { env } from "@/lib/env";
+import { assertUrlsAllowed, httpUrlSchema } from "@/lib/editorial-safety";
 
 /**
- * WRITE stage (Sonnet 5) — turns RESEARCH's grounded findings into the day's post and
- * newsletter. Deliberately split: the LLM produces prose and editorial judgment
+ * Legacy WRITE stage (Sonnet 5) — turns RESEARCH's grounded findings into a post and
+ * newsletter. Kept only so a pre-structured-daily checkpoint can finish REVIEW.
+ * Deliberately split: the LLM produces prose and editorial judgment
  * (title, body, which highlights matter); deterministic code renders the actual
  * email HTML and the stock table. An LLM asked to also emit safe, well-formed
  * email-client HTML is a second failure surface for no benefit — the data underneath
@@ -59,7 +69,7 @@ const writeOutputSchema = z.object({
    * match a database query does perfectly and an LLM review pass might not catch.
    */
   emailHighlights: z
-    .array(z.object({ title: z.string().min(1), oneLiner: z.string().min(1), url: z.string().url() }))
+    .array(z.object({ title: z.string().min(1), oneLiner: z.string().min(1), url: httpUrlSchema }))
     .min(1)
     .max(6),
 });
@@ -160,6 +170,119 @@ Write today's piece now.`;
   }
 
   return result.data;
+}
+
+const DAILY_BRIEF_SYSTEM = `${PRAGMATIC_PRACTITIONER}
+
+You are the machine-authored WRITE stage for Engineerious Daily. Turn the supplied, already
+ranked research findings into a concise structured intelligence sheet. This is not a blog post
+and it is not an email.
+
+Rules, no exceptions:
+- Every factual statement must trace directly to a supplied finding. Do not add remembered facts,
+  model specifications, dates, prices, benchmarks, mechanisms, or context.
+- Every sourceUrls value must be copied verbatim from a supplied finding. Never create, rewrite,
+  normalize, or shorten a URL.
+- Select 1-10 genuinely important stories. Merge overlapping findings rather than repeating them.
+- Keep whatHappened factual, whyItMatters analytical but grounded, and forEngineers concrete. Do
+  not claim Tharun tested, used, built, recommends, prefers, or believes anything.
+- Optional learning/model/tool/paper modules may appear only when the findings contain enough
+  evidence to fill every included factual field. In modelToKnow, use null for unknown modelSize,
+  contextWindow, or license; do not guess them.
+- myTake MUST be the empty string. It is a human-only field that Tharun writes and explicitly
+  confirms in the admin review flow. Never draft an opinion on his behalf.
+- Return ONLY JSON matching this shape, with no markdown fences:
+{"schemaVersion":1,"date":string,"title":string,"summary":string,"stories":[{"id":string,"category":"models"|"agents"|"research"|"open_source"|"frameworks"|"infrastructure"|"business"|"developer_tools","sourceLabel":string,"headline":string,"whatHappened":string,"whyItMatters":string,"forEngineers":string,"sourceUrls":string[]}],"oneThingToLearn":{"title":string,"explanation":string,"sourceUrls":string[]}|null,"modelToKnow":{"name":string,"whatItDoes":string,"modelSize":string|null,"contextWindow":string|null,"license":string|null,"whyInteresting":string,"sourceUrls":string[]}|null,"toolOfTheDay":{"name":string,"whatItIs":string,"whenToUse":string,"sourceUrls":string[]}|null,"paperWorthKnowing":{"title":string,"takeaway":string,"sourceUrls":string[]}|null,"myTake":""}`;
+
+/**
+ * Produces the private, structured Daily checkpoint. Machine output is never
+ * allowed to populate `myTake`; it is overwritten before validation even if the
+ * model ignores the instruction. Story IDs are also replaced deterministically so
+ * editing/reordering does not depend on model-generated identifiers.
+ */
+export async function writeDailyBrief(input: {
+  findings: Finding[];
+  stockQuotes: StockQuote[];
+  date: string;
+}): Promise<GeneratedDailyBrief> {
+  const prompt = `=== TODAY'S RESEARCH FINDINGS (${input.date}) ===
+${formatFindings(input.findings)}
+
+Stock quotes are intentionally excluded from the source material: they have no source URL in this
+stage and must not become claims in the Daily brief.
+
+Build the structured Daily brief now.`;
+
+  const raw = await complete({
+    system: DAILY_BRIEF_SYSTEM,
+    prompt,
+    maxTokens: 8000,
+    model: env.llmModelPremium,
+  });
+  const jsonText = raw.trim().replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch (error) {
+    throw new Error(
+      `Daily WRITE stage returned invalid JSON: ${(error as Error).message}\n---\n${raw.slice(0, 500)}`,
+    );
+  }
+
+  // Normalize IDs before the schema's uniqueness refinement. Two otherwise valid
+  // stories may arrive with the same disposable model-supplied ID; identity belongs
+  // to deterministic code, not the model. Invalid story fields are left untouched
+  // so the real schema still reports them precisely below.
+  let forcedHumanBoundary: unknown = parsed;
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    const record = parsed as Record<string, unknown>;
+    const stories = Array.isArray(record.stories)
+      ? record.stories.map((candidate) => {
+          if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return candidate;
+          const story = candidate as Record<string, unknown>;
+          const sourceUrls = story.sourceUrls;
+          if (
+            typeof story.headline !== "string" ||
+            !Array.isArray(sourceUrls) ||
+            !sourceUrls.every((url): url is string => typeof url === "string")
+          ) {
+            return candidate;
+          }
+          return {
+            ...story,
+            id: createDailyStoryId({
+              date: input.date,
+              headline: story.headline,
+              sourceUrls,
+            }),
+          };
+        })
+      : record.stories;
+    forcedHumanBoundary = { ...record, schemaVersion: 1, date: input.date, stories, myTake: "" };
+  }
+
+  const result = generatedDailyBriefSchema.safeParse(forcedHumanBoundary);
+  if (!result.success) {
+    throw new Error(
+      `Daily WRITE stage output failed schema validation: ${JSON.stringify(result.error.issues)}`,
+    );
+  }
+
+  const normalized = parseGeneratedDailyBrief(result.data);
+
+  assertUrlsAllowed(
+    collectDailySourceUrls(normalized),
+    input.findings.flatMap((finding) => finding.sourceUrls),
+    "Daily WRITE sources",
+  );
+  assertNoFabricatedExperience(
+    { title: normalized.title, dek: normalized.summary, origin: "ai_generated" },
+    JSON.stringify({ ...normalized, myTake: "" }),
+    `Daily WRITE output for ${input.date}`,
+  );
+
+  return normalized;
 }
 
 function escapeHtml(s: string): string {

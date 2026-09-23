@@ -5,6 +5,7 @@ import { getAllPosts, getPost, isVisible } from "@/lib/content/blog";
 import { AUTHOR_NAME } from "@/lib/site";
 
 export const runtime = "nodejs";
+export const revalidate = 300;
 export const alt = "Engineerious";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -33,15 +34,36 @@ export default async function Image({ params }: { params: Promise<{ slug: string
           flexDirection: "column",
           justifyContent: "space-between",
           padding: "72px",
-          background: "#17171a",
-          color: "#f5f5f3",
-          fontFamily: "system-ui, sans-serif",
+          background: "#f7f8fa",
+          color: "#0f1729",
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
         }}
       >
-        <div style={{ display: "flex", fontSize: 28, fontWeight: 700, letterSpacing: -0.5 }}>
-          Engineerious
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", fontSize: 26, fontWeight: 700 }}>Engineerious</div>
+          <div
+            style={{
+              display: "flex",
+              padding: "10px 14px",
+              border: "1px solid #cfd5df",
+              borderRadius: 6,
+              color: "#083e9e",
+              fontSize: 18,
+              letterSpacing: "0.06em",
+            }}
+          >
+            VERIFIED WRITING
+          </div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 22,
+            borderLeft: "8px solid #0b57d0",
+            paddingLeft: 34,
+          }}
+        >
           <div
             style={{
               display: "flex",
@@ -54,13 +76,14 @@ export default async function Image({ params }: { params: Promise<{ slug: string
             {post.title}
           </div>
           {post.dek && (
-            <div style={{ display: "flex", fontSize: 24, color: "#9fb3c8", maxWidth: 940 }}>
+            <div style={{ display: "flex", fontSize: 24, color: "#4a5468", maxWidth: 940 }}>
               {post.dek}
             </div>
           )}
         </div>
-        <div style={{ display: "flex", fontSize: 20, color: "#b3261e", fontWeight: 600 }}>
-          {AUTHOR_NAME} · engineerious.com
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 20, color: "#4a5468" }}>
+          <div style={{ display: "flex" }}>AI engineering field notes</div>
+          <div style={{ display: "flex", color: "#0b57d0", fontWeight: 700 }}>{AUTHOR_NAME}</div>
         </div>
       </div>
     ),

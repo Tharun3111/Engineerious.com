@@ -1,15 +1,30 @@
 import type { Metadata } from "next";
 
+import { AiCurationQueue } from "@/components/AiCurationQueue";
 import {
   DigestQueue,
   PendingItemsQueue,
   RepurposeQueue,
   SubmissionsQueue,
 } from "@/components/AdminQueue";
+import { DailyDigestEditor } from "@/components/DailyDigestEditor";
+import {
+  NewsletterQueue,
+  SubscriberDeliveryQueue,
+} from "@/components/NewsletterQueue";
+import {
+  factualContentHash,
+  myTakeContentHash,
+  parseDailyBriefDraft,
+} from "@/lib/daily-brief";
 import { getPostRow } from "@/lib/content/sync";
+import { getCuratedAiAdminQueue } from "@/lib/curated-ai-queries";
 import { getPendingDigests, getPendingItems, getRepurposeQueue, getSubmissions } from "@/lib/queries";
 import { llmConfigured } from "@/lib/llm";
-import { resendConfigured } from "@/lib/resend";
+import { getNewsletterQueue } from "@/lib/newsletter-queries";
+import { newsletterDeliveryConfigured } from "@/lib/resend";
+import { reviewSchema } from "@/lib/review";
+import { getSubscriberDeliveryQueue } from "@/lib/subscriber-queries";
 
 export const dynamic = "force-dynamic";
 
@@ -18,23 +33,75 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/** Gated by HTTP Basic in middleware.ts. Nothing here is reachable unauthenticated. */
+/** Gated by HTTP Basic in proxy.ts. Nothing here is reachable unauthenticated. */
 export default async function AdminPage() {
-  const [pending, queue, subs, pendingDigests] = await Promise.all([
+  const [
+    pending,
+    queue,
+    subs,
+    pendingDigests,
+    curatedAi,
+    newsletterQueue,
+    subscriberDelivery,
+  ] = await Promise.all([
     getPendingItems(),
     getRepurposeQueue(),
     getSubmissions(),
     getPendingDigests(),
+    getCuratedAiAdminQueue(),
+    getNewsletterQueue(),
+    getSubscriberDeliveryQueue(),
   ]);
 
+  const legacyDigests = pendingDigests.digests.filter((digest) => !digest.dailyDraft);
   const digestRows = await Promise.all(
-    pendingDigests.digests.map(async (digest) => ({
+    legacyDigests.map(async (digest) => ({
       digest,
       post: digest.blogPostSlug ? await getPostRow(digest.blogPostSlug) : null,
     })),
   );
 
-  const errors = [pending.error, queue.error, subs.error, pendingDigests.error].filter(Boolean);
+  const dailyErrors: string[] = [];
+  const dailyRecords = pendingDigests.digests.flatMap((digest) => {
+    if (!digest.dailyDraft) return [];
+    try {
+      const draft = parseDailyBriefDraft(digest.dailyDraft);
+      const review = reviewSchema.safeParse(digest.reviewReport);
+      return [
+        {
+          key: `${digest.id}:${digest.updatedAt.toISOString()}`,
+          record: {
+            id: digest.id,
+            date: digest.date,
+            status: digest.status,
+            draftVersion: digest.draftVersion,
+            draft,
+            reviewReport: review.success ? review.data : null,
+            reviewCurrent: digest.reviewedContentHash === factualContentHash(draft),
+            myTakeConfirmed:
+              Boolean(digest.myTakeConfirmedAt && digest.myTakeConfirmedBy) &&
+              digest.myTakeConfirmedHash === myTakeContentHash(draft.myTake),
+            reviewedAt: digest.reviewedAt?.toISOString() ?? null,
+            myTakeConfirmedAt: digest.myTakeConfirmedAt?.toISOString() ?? null,
+          },
+        },
+      ];
+    } catch (error) {
+      dailyErrors.push(
+        `Digest #${digest.id} has an invalid structured draft: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return [];
+    }
+  });
+
+  const errors = [
+    pending.error,
+    queue.error,
+    subs.error,
+    pendingDigests.error,
+    curatedAi.error,
+    ...dailyErrors,
+  ].filter(Boolean);
 
   return (
     <div className="space-y-8 py-8">
@@ -43,7 +110,7 @@ export default async function AdminPage() {
         <h1 className="text-[24px] font-bold tracking-tight">Admin</h1>
         <p className="font-mono text-[12px] text-muted">
           distribution: manual LinkedIn/Instagram copy · llm: {llmConfigured() ? "configured" : "not configured"}
-          {" · "}newsletter: {resendConfigured() ? "configured" : "not configured"}
+          {" · "}newsletter delivery: {newsletterDeliveryConfigured() ? "configured" : "not configured"}
         </p>
       </header>
 
@@ -55,15 +122,78 @@ export default async function AdminPage() {
 
       <section className="card p-5">
         <h2 className="text-[15px] font-semibold">
-          Daily digest review{" "}
+          Daily Brief editor{" "}
           <span className="font-mono text-[12px] font-normal text-muted">
-            ({digestRows.length})
+            ({dailyRecords.length})
           </span>
         </h2>
-        <div className="mt-3">
-          <DigestQueue rows={digestRows} />
+        <p className="mt-1 text-[13px] text-muted">
+          Edit the structured brief, inspect its evidence, review the factual revision, then add and confirm My Take.
+        </p>
+        <div className="mt-4 space-y-5">
+          {dailyRecords.length > 0 ? (
+            dailyRecords.map(({ key, record }) => <DailyDigestEditor key={key} record={record} />)
+          ) : (
+            <p className="text-[13.5px] text-muted">No structured Daily Briefs awaiting review.</p>
+          )}
         </div>
       </section>
+
+      <section className="card p-5">
+        <h2 className="text-[15px] font-semibold">
+          Newsletter outbox{" "}
+          <span className="font-mono text-[12px] font-normal text-muted">
+            ({newsletterQueue.newsletters.length})
+          </span>
+        </h2>
+        <p className="mt-1 max-w-3xl text-[13px] leading-5 text-muted">
+          Prepare an email from a published structured Daily snapshot, review its exact preview,
+          approve it, then send it as a separate action. Web publication never sends email.
+        </p>
+        <div className="mt-4">
+          <NewsletterQueue
+            newsletters={newsletterQueue.newsletters}
+            error={newsletterQueue.error}
+          />
+        </div>
+      </section>
+
+      <section className="card p-5">
+        <h2 className="text-[15px] font-semibold">
+          Subscriber delivery repair{" "}
+          <span className="font-mono text-[12px] font-normal text-muted">
+            ({subscriberDelivery.total})
+          </span>
+        </h2>
+        <p className="mt-1 max-w-3xl text-[13px] leading-5 text-muted">
+          Retry only active captured addresses that never received a provider contact ID. This
+          queue must be empty before a newsletter send can be claimed.
+        </p>
+        <div className="mt-4">
+          <SubscriberDeliveryQueue
+            subscribers={subscriberDelivery.subscribers}
+            total={subscriberDelivery.total}
+            error={subscriberDelivery.error}
+          />
+        </div>
+      </section>
+
+      {digestRows.length > 0 && (
+        <section className="card p-5">
+          <h2 className="text-[15px] font-semibold">
+            Legacy digest recovery{" "}
+            <span className="font-mono text-[12px] font-normal text-muted">
+              ({digestRows.length})
+            </span>
+          </h2>
+          <p className="mt-1 text-[13px] text-muted">
+            Pre-structured drafts remain recoverable until their queue is empty.
+          </p>
+          <div className="mt-3">
+            <DigestQueue rows={digestRows} />
+          </div>
+        </section>
+      )}
 
       <section className="card p-5">
         <h2 className="text-[15px] font-semibold">
@@ -74,6 +204,21 @@ export default async function AdminPage() {
         </h2>
         <div className="mt-3">
           <RepurposeQueue jobs={queue.jobs} />
+        </div>
+      </section>
+
+      <section className="card p-5">
+        <h2 className="text-[15px] font-semibold">
+          Curated AI desk{" "}
+          <span className="font-mono text-[12px] font-normal text-muted">
+            ({curatedAi.items.length})
+          </span>
+        </h2>
+        <p className="mt-1 text-[13px] text-muted">
+          Review approved ingestion records into immutable public snapshots. Approval alone never publishes to the AI desk.
+        </p>
+        <div className="mt-4">
+          <AiCurationQueue items={curatedAi.items} />
         </div>
       </section>
 

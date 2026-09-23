@@ -1,31 +1,29 @@
 /**
- * Tharun's presence on his own site.
- *
- * Before this redesign AUTHOR_NAME existed only in metadata, JSON-LD and the OG
- * image — never rendered on screen anywhere. No photo exists in the repo yet
- * (`public/` has no avatar/headshot file), so this renders a monogram until one
- * is added. Swap the fallback for a real <Image src="/author.jpg" .../> the day
- * a photo lands — the size/shape contract here is designed not to need any other
- * change when that happens.
+ * Tharun's monogram inside the Proof Loop. The blue checkpoint interrupts the
+ * navy ring instead of decorating a generic avatar tile: one compact mark now
+ * connects the person, the publication, and the favicon without pretending a
+ * headshot exists.
  */
 export function AuthorBadge({ size = "sm" }: { size?: "sm" | "lg" }) {
   const px = size === "lg" ? 44 : 30;
-  const font = size === "lg" ? 15 : 11;
+  const font = size === "lg" ? 14 : 10;
+  const checkpoint = size === "lg" ? 9 : 7;
 
   return (
     <span
       aria-hidden
-      className="inline-flex shrink-0 items-center justify-center rounded-md text-white"
+      className="relative inline-flex shrink-0 items-center justify-center rounded-full border-2 border-fg bg-surface font-mono font-medium text-fg"
       style={{
         width: px,
         height: px,
         fontSize: font,
-        fontFamily: "var(--font-mono)",
-        fontWeight: 500,
-        background: "linear-gradient(135deg, #083E9E, #0B57D0)",
       }}
     >
       TC
+      <span
+        className="absolute -right-0.5 -top-0.5 bg-accent ring-2 ring-surface"
+        style={{ width: checkpoint, height: checkpoint }}
+      />
     </span>
   );
 }

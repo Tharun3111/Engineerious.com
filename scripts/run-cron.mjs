@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Trigger an ingestion cron against a running server.
+ * Trigger an ingestion or editorial cron against a running server.
  *
  *   npm run cron:news
  *   npm run cron:all
@@ -11,7 +11,7 @@
  */
 import { readFileSync } from "node:fs";
 
-const FEEDS = ["news", "models", "oss", "rank"];
+const FEEDS = ["news", "models", "oss", "rank", "daily-digest", "daily-write"];
 
 function loadEnvFile(path) {
   try {
@@ -65,6 +65,12 @@ for (const feed of feeds) {
 
     if (feed === "rank") {
       console.log(`  ✓ rescored ${body.rescored ?? "?"} items (${seconds}s)`);
+      continue;
+    }
+
+    if (feed === "daily-digest" || feed === "daily-write") {
+      const detail = body.skipped ? `skipped: ${body.skipped}` : body.status ?? "completed";
+      console.log(`  ✓ ${detail} (${seconds}s)`);
       continue;
     }
 

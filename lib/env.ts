@@ -8,6 +8,11 @@ export const env = {
   databaseUrl: process.env.DATABASE_URL,
   cronSecret: process.env.CRON_SECRET,
   adminPassword: process.env.ADMIN_PASSWORD,
+  /**
+   * Key for HMAC-only public mutation counters. Production subscribe/submit
+   * mutations fail closed unless this is 32-128 random bytes encoded as hex.
+   */
+  publicMutationRateLimitSecret: process.env.MUTATION_RATE_LIMIT_SECRET,
 
   githubToken: process.env.GITHUB_TOKEN,
   hfToken: process.env.HF_TOKEN,
@@ -30,6 +35,8 @@ export const env = {
   resendApiKey: process.env.RESEND_API_KEY,
   resendSegmentId: process.env.RESEND_SEGMENT_ID,
   resendFromAddress: process.env.RESEND_FROM_ADDRESS,
+  /** Required in every delivered email footer; broadcasts fail closed without it. */
+  newsletterPostalAddress: process.env.NEWSLETTER_POSTAL_ADDRESS,
 
   /** Daily-digest pipeline. See lib/adapters/tavily.ts, lib/stocks.ts, lib/research.ts. */
   tavilyApiKey: process.env.TAVILY_API_KEY,
@@ -62,18 +69,17 @@ export const env = {
   githubUrl: process.env.NEXT_PUBLIC_GITHUB_URL,
 
   /**
-   * When true, newly ingested items land as `pending` and only appear in the feeds
-   * after a human approves them in /admin. Recommended once traffic is real; off by
-   * default so a fresh install shows a populated feed on first cron run.
+   * Newly ingested intelligence is pending by default. An explicit `false` is
+   * reserved for local fixtures and private development environments; public
+   * deployments must never become auto-publishing feeds because an env var was
+   * omitted.
    */
-  requireIngestApproval: process.env.INGEST_REQUIRE_APPROVAL === "true",
+  requireIngestApproval: process.env.INGEST_REQUIRE_APPROVAL !== "false",
 
   /**
-   * Launch gate. Off = /open-source, /resources, /submit, /pillars 404 with
-   * noindex (see middleware.ts and app/robots.ts, both of which read this same
-   * flag — keep them in sync if it ever moves). Read directly from process.env in
-   * middleware.ts too since Edge runtime code there predates this being in lib/env;
-   * both must agree.
+   * Launch gate. Off = /open-source, /submit and /pillars 404 with noindex.
+   * /resources remains hard-closed while it contains placeholders. Middleware,
+   * robots, sitemap and data queries share this contract; keep all four aligned.
    */
   publicResearchEnabled: process.env.PUBLIC_RESEARCH_ENABLED === "true",
 
@@ -102,6 +108,21 @@ export function requireEnv(name: keyof typeof env): string {
     );
   }
   return value;
+}
+
+/** A random, hex-encoded 32-128 byte key; validation is deliberately strict so a
+ * memorable password cannot silently become the privacy boundary for client and
+ * email identifiers. */
+export function isValidPublicMutationRateLimitSecret(
+  value: string | undefined,
+): value is string {
+  return (
+    typeof value === "string" &&
+    value.length >= 64 &&
+    value.length <= 256 &&
+    value.length % 2 === 0 &&
+    /^[0-9a-f]+$/i.test(value)
+  );
 }
 
 export const isDbConfigured = () => Boolean(env.databaseUrl);

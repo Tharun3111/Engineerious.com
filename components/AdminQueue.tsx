@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 
 import type { Digest, Item, Post, RepurposeJob, Submission } from "@/db/schema";
 import { hostname } from "@/lib/dedupe";
+import { isHttpUrl } from "@/lib/editorial-safety";
 import { timeAgo } from "@/lib/time";
 
 /**
@@ -14,7 +15,7 @@ import { timeAgo } from "@/lib/time";
  *   2. Repurpose drafts awaiting review — nothing reaches a social account until a
  *      row here is approved.
  *
- * Auth is HTTP Basic, enforced in middleware.ts for /admin and /api/admin. The
+ * Auth is HTTP Basic, enforced in proxy.ts for /admin and /api/admin. The
  * browser replays the credentials on these fetches, so no token handling here.
  */
 
@@ -65,7 +66,7 @@ export function PendingItemsQueue({ items }: { items: Item[] }) {
   if (items.length === 0) {
     return (
       <p className="text-[13.5px] text-muted">
-        Nothing awaiting moderation. Items auto-approve unless INGEST_REQUIRE_APPROVAL=true.
+        Nothing awaiting moderation. New items stay here unless INGEST_REQUIRE_APPROVAL=false.
       </p>
     );
   }
@@ -74,19 +75,25 @@ export function PendingItemsQueue({ items }: { items: Item[] }) {
     <div>
       {error && <p className="mb-2 text-[13px] text-accent-strong">{error}</p>}
       <ul className="divide-y divide-rule">
-        {items.map((item) => (
+        {items.map((item) => {
+          const safeUrl = isHttpUrl(item.url);
+          return (
           <li key={item.id} className="flex flex-wrap items-start gap-2 py-2">
             <div className="min-w-0 flex-1">
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[14.5px]"
-              >
-                {item.title}
-              </a>
+              {safeUrl ? (
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[14.5px]"
+                >
+                  {item.title}
+                </a>
+              ) : (
+                <span className="text-[14.5px]">{item.title}</span>
+              )}
               <p className="font-mono text-[12px] text-muted">
-                {item.source} ({hostname(item.url)}) · {item.type} ·{" "}
+                {item.source} ({safeUrl ? hostname(item.url) : "unsafe/invalid URL"}) · {item.type} ·{" "}
                 {timeAgo(item.publishedAt ?? item.firstSeen)} · score{" "}
                 {item.score.toFixed(3)}
               </p>
@@ -94,9 +101,10 @@ export function PendingItemsQueue({ items }: { items: Item[] }) {
             <div className="flex gap-1.5">
               <button
                 type="button"
-                disabled={pending}
+                disabled={pending || !safeUrl}
                 onClick={() => run(() => post("/api/admin/items", { id: item.id, action: "approve" }))}
                 className="btn btn-primary btn-sm disabled:opacity-60"
+                title={safeUrl ? undefined : "Unsafe legacy URLs cannot be approved."}
               >
                 Approve
               </button>
@@ -110,7 +118,8 @@ export function PendingItemsQueue({ items }: { items: Item[] }) {
               </button>
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </div>
   );
@@ -137,6 +146,8 @@ export function RepurposeQueue({ jobs }: { jobs: RepurposeJob[] }) {
           const value = drafts[job.id] ?? job.draft;
           const locked =
             job.status === "approved" || job.status === "published" || job.status === "scheduled";
+          const publishedUrl = job.publishedUrl?.trim() ?? null;
+          const safePublishedUrl = publishedUrl && isHttpUrl(publishedUrl) ? publishedUrl : null;
 
           return (
             <li key={job.id} className="card p-4">
@@ -145,16 +156,20 @@ export function RepurposeQueue({ jobs }: { jobs: RepurposeJob[] }) {
                   <span className="text-accent-strong">{job.platform}</span> · {job.postSlug} ·{" "}
                   <span className="text-muted">{job.status}</span>
                 </p>
-                {job.publishedUrl && (
+                {safePublishedUrl ? (
                   <a
-                    href={job.publishedUrl}
+                    href={safePublishedUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-mono text-[12px] text-muted"
                   >
                     view post ↗
                   </a>
-                )}
+                ) : publishedUrl ? (
+                  <span className="font-mono text-[12px] text-muted">
+                    unsafe/invalid published URL
+                  </span>
+                ) : null}
               </div>
 
               <textarea
@@ -235,42 +250,61 @@ export function SubmissionsQueue({ submissions }: { submissions: Submission[] })
     <div>
       {error && <p className="mb-2 text-[13px] text-accent-strong">{error}</p>}
       <ul className="divide-y divide-rule">
-        {submissions.map((submission) => (
-          <li key={submission.id} className="flex flex-wrap items-start gap-2 py-2">
-            <div className="min-w-0 flex-1">
-              <a href={submission.url} target="_blank" rel="noopener noreferrer" className="text-[14.5px]">
-                {submission.title}
-              </a>
-              <p className="font-mono text-[12px] text-muted">
-                {submission.type} · {hostname(submission.url)} · {timeAgo(submission.createdAt)}
-                {submission.submitterEmail ? ` · ${submission.submitterEmail}` : ""}
-              </p>
-              {submission.note && <p className="text-[13px] text-muted">{submission.note}</p>}
-            </div>
-            <div className="flex gap-1.5">
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() =>
-                  run(() => post("/api/admin/submissions", { id: submission.id, action: "accept" }))
-                }
-                className="btn btn-primary btn-sm disabled:opacity-60"
-              >
-                Accept
-              </button>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() =>
-                  run(() => post("/api/admin/submissions", { id: submission.id, action: "reject" }))
-                }
-                className="btn btn-secondary btn-sm disabled:opacity-60"
-              >
-                Reject
-              </button>
-            </div>
-          </li>
-        ))}
+        {submissions.map((submission) => {
+          const safeUrl = isHttpUrl(submission.url);
+
+          return (
+            <li key={submission.id} className="flex flex-wrap items-start gap-2 py-2">
+              <div className="min-w-0 flex-1">
+                {safeUrl ? (
+                  <a
+                    href={submission.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[14.5px]"
+                  >
+                    {submission.title}
+                  </a>
+                ) : (
+                  <span className="text-[14.5px]">{submission.title}</span>
+                )}
+                <p className="font-mono text-[12px] text-muted">
+                  {submission.type} · {safeUrl ? hostname(submission.url) : "unsafe/invalid URL"} ·{" "}
+                  {timeAgo(submission.createdAt)}
+                  {submission.submitterEmail ? ` · ${submission.submitterEmail}` : ""}
+                </p>
+                {submission.note && <p className="text-[13px] text-muted">{submission.note}</p>}
+              </div>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  disabled={pending || !safeUrl}
+                  onClick={() =>
+                    run(() =>
+                      post("/api/admin/submissions", { id: submission.id, action: "accept" }),
+                    )
+                  }
+                  className="btn btn-primary btn-sm disabled:opacity-60"
+                  title={safeUrl ? undefined : "Unsafe legacy URLs cannot be accepted."}
+                >
+                  Accept
+                </button>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() =>
+                    run(() =>
+                      post("/api/admin/submissions", { id: submission.id, action: "reject" }),
+                    )
+                  }
+                  className="btn btn-secondary btn-sm disabled:opacity-60"
+                >
+                  Reject
+                </button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -283,19 +317,11 @@ export type ReviewReport = {
   readsAsGenericAiContent: boolean;
 };
 
-/**
- * The daily-pipeline review queue. Approving publishes the post AND sends the
- * newsletter in one action — see /api/admin/digests. Nothing upstream of this
- * component can do either; this is the only human gate in the whole pipeline.
- */
+/** Recovery gate for pre-Phase-2 post-shaped digests. New structured Daily
+ * Briefs use DailyDigestEditor; this remains until every legacy row is actioned. */
 export function DigestQueue({ rows }: { rows: Array<{ digest: Digest; post: Post | null }> }) {
   const { run, pending, error } = useAction();
   const [expanded, setExpanded] = useState<number | null>(null);
-  // Approving returns 200 even when the post published but the email failed to
-  // send (publishing must not roll back over an email problem) — so that partial
-  // failure has to be surfaced from the response body, not from useAction's error
-  // state, which only fires on a non-2xx throw.
-  const [emailWarning, setEmailWarning] = useState<string | null>(null);
 
   if (rows.length === 0) {
     return <p className="text-[13.5px] text-muted">No digests awaiting review.</p>;
@@ -304,12 +330,13 @@ export function DigestQueue({ rows }: { rows: Array<{ digest: Digest; post: Post
   return (
     <div>
       {error && <p className="mb-2 text-[13px] text-accent-strong">{error}</p>}
-      {emailWarning && <p className="mb-2 text-[13px] text-accent-strong">Published, but {emailWarning}</p>}
       <ul className="space-y-4">
         {rows.map(({ digest, post: postRow }) => {
           const review = (digest.reviewReport as ReviewReport | null) ?? null;
           const isOpen = expanded === digest.id;
           const issueCount = (review?.groundingViolations.length ?? 0) + (review?.voiceViolations.length ?? 0);
+          const publishBlocked =
+            !review || issueCount > 0 || review.readsAsGenericAiContent || !postRow;
 
           return (
             <li key={digest.id} className="card p-4">
@@ -405,17 +432,15 @@ export function DigestQueue({ rows }: { rows: Array<{ digest: Digest; post: Post
               <div className="mt-3 flex flex-wrap gap-1.5">
                 <button
                   type="button"
-                  disabled={pending}
-                  onClick={async () => {
-                    setEmailWarning(null);
-                    const result = (await run(() =>
-                      post("/api/admin/digests", { id: digest.id, action: "approve" }),
-                    )) as { emailError?: string | null } | undefined;
-                    if (result?.emailError) setEmailWarning(result.emailError);
-                  }}
+                  disabled={pending || publishBlocked}
+                  onClick={() =>
+                    run(() => post("/api/admin/digests", { id: digest.id, action: "approve" }))
+                  }
                   className="btn btn-primary btn-sm disabled:opacity-60"
+                  aria-disabled={publishBlocked}
+                  title={publishBlocked ? "Resolve review flags before publishing." : undefined}
                 >
-                  Approve — publish &amp; email
+                  Approve &amp; publish
                 </button>
                 <button
                   type="button"

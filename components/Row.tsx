@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import type { Item } from "@/db/schema";
 import { hostname } from "@/lib/dedupe";
+import { isHttpUrl } from "@/lib/editorial-safety";
 import { sectionFor } from "@/lib/sections";
 import { timeAgo } from "@/lib/time";
 
@@ -36,8 +37,11 @@ export function Row({
   showType?: boolean;
 }) {
   const section = sectionFor(item.type);
-  const host = hostname(item.url);
-  const discussion = (item.rawJson as { discussion?: string } | null)?.discussion;
+  const safeItemUrl = isHttpUrl(item.url);
+  const host = safeItemUrl ? hostname(item.url) : "";
+  const rawDiscussion = (item.rawJson as { discussion?: unknown } | null)?.discussion;
+  const discussion =
+    typeof rawDiscussion === "string" && isHttpUrl(rawDiscussion) ? rawDiscussion : null;
   const isTopRanked = highlightRank && rank !== undefined && rank <= 3;
   const isPrimarySource = item.sourceWeight >= PRIMARY_SOURCE_THRESHOLD;
 
@@ -70,9 +74,13 @@ export function Row({
         )}
 
         <p className="text-[17px] font-semibold leading-snug tracking-[-0.01em]">
-          <a href={item.url} target="_blank" rel="noopener noreferrer nofollow" className="hover:text-accent-strong hover:underline hover:decoration-1 hover:underline-offset-2">
-            {item.title}
-          </a>
+          {safeItemUrl ? (
+            <a href={item.url} target="_blank" rel="noopener noreferrer nofollow" className="hover:text-accent-strong hover:underline hover:decoration-1 hover:underline-offset-2">
+              {item.title}
+            </a>
+          ) : (
+            <span>{item.title}</span>
+          )}
         </p>
 
         {item.aiNote && (

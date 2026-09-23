@@ -43,6 +43,41 @@
       "when": 1786540415432,
       "tag": "0005_fair_blob",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787638380799,
+      "tag": "0006_jittery_justice",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787641334735,
+      "tag": "0007_big_peter_parker",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787644059161,
+      "tag": "0008_boring_piledriver",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787656778588,
+      "tag": "0009_perpetual_warpath",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787659804883,
+      "tag": "0010_bent_susan_delgado",
+      "breakpoints": true
     }
   ]
 }

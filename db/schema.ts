@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   doublePrecision,
   index,
@@ -7,6 +9,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   serial,
   text,
   timestamp,
@@ -60,7 +63,17 @@ export const digestStatusEnum = pgEnum("digest_status", [
   "pending_review",
   "approved",
   "published",
+  "rejected",
   "failed",
+]);
+export const newsletterStatusEnum = pgEnum("newsletter_status", [
+  "draft",
+  "approved",
+  "sending",
+  "queued",
+  "sent",
+  "failed",
+  "canceled",
 ]);
 
 /**
@@ -108,6 +121,13 @@ export const items = pgTable(
     publishedAt: timestamp("published_at", { withTimezone: true }),
     rankedAt: timestamp("ranked_at", { withTimezone: true }),
     rawJson: jsonb("raw_json"),
+    /**
+     * Human-reviewed, immutable public copy. Ingestion may continue to update the
+     * live row, but /ai and topic pages render this snapshot exclusively.
+     */
+    curatedSnapshot: jsonb("curated_snapshot"),
+    curatedAt: timestamp("curated_at", { withTimezone: true }),
+    curatedBy: text("curated_by"),
   },
   (t) => [
     uniqueIndex("items_url_hash_key").on(t.urlHash),
@@ -115,6 +135,9 @@ export const items = pgTable(
     index("items_score_idx").on(t.score),
     index("items_published_idx").on(t.publishedAt),
     index("items_status_idx").on(t.status),
+    // Snapshot type is the immutable publication field. Status + live score
+    // supports the public filter/order even if ingestion later reclassifies row.type.
+    index("items_curated_visibility_idx").on(t.status, t.score),
   ],
 );
 
@@ -231,11 +254,46 @@ export const digests = pgTable(
     date: date("date").notNull(),
     status: digestStatusEnum("status").notNull().default("generating"),
     blogPostSlug: text("blog_post_slug"),
-    /** Digest-email HTML body, rendered once at write time, sent verbatim on approve. */
+    /** Server-rendered outbox artifact. Newsletter prepare/save regenerates it from dailyPublished. */
     emailHtml: text("email_html"),
+    /**
+     * Newsletter delivery is a separate, human-approved outbox. Web publication
+     * never changes this state, and existing digests remain null until prepared.
+     */
+    newsletterStatus: newsletterStatusEnum("newsletter_status"),
+    newsletterSubject: text("newsletter_subject"),
+    newsletterVersion: integer("newsletter_version").notNull().default(0),
+    /** SHA-256 of the exact subject + deterministic emailHtml approved for send. */
+    newsletterApprovedHash: text("newsletter_approved_hash"),
+    newsletterApprovedAt: timestamp("newsletter_approved_at", { withTimezone: true }),
+    newsletterApprovedBy: text("newsletter_approved_by"),
+    /** Persisted before the separate provider send call; the external idempotency boundary. */
+    newsletterBroadcastId: text("newsletter_broadcast_id"),
+    newsletterClaimedAt: timestamp("newsletter_claimed_at", { withTimezone: true }),
+    newsletterError: text("newsletter_error"),
     stockSummary: jsonb("stock_summary"),
     /** Stage 4 output — structured flags the human reviews before approving. */
     reviewReport: jsonb("review_report"),
+    /**
+     * Private, mutable Daily Brief working copy. The writer and admin editor may
+     * replace this value while the digest is under review; public routes never
+     * read it. Validation lives in lib/daily-brief.ts so malformed JSON fails
+     * closed instead of becoming public content.
+     */
+    dailyDraft: jsonb("daily_draft"),
+    /**
+     * Immutable public snapshot captured atomically when a reviewed Daily Brief
+     * is published. Public routes read this column exclusively.
+     */
+    dailyPublished: jsonb("daily_published"),
+    /** Optimistic concurrency token for edits to dailyDraft. */
+    draftVersion: integer("draft_version").notNull().default(0),
+    /** SHA-256 of the reviewed payload with myTake excluded. */
+    reviewedContentHash: text("reviewed_content_hash"),
+    /** SHA-256 of the exact human-confirmed myTake text. */
+    myTakeConfirmedHash: text("my_take_confirmed_hash"),
+    myTakeConfirmedAt: timestamp("my_take_confirmed_at", { withTimezone: true }),
+    myTakeConfirmedBy: text("my_take_confirmed_by"),
     reviewedBy: text("reviewed_by"),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     publishedAt: timestamp("published_at", { withTimezone: true }),
@@ -244,7 +302,13 @@ export const digests = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("digests_date_key").on(t.date), index("digests_status_idx").on(t.status)],
+  (t) => [
+    uniqueIndex("digests_date_key").on(t.date),
+    uniqueIndex("digests_newsletter_broadcast_id_key").on(t.newsletterBroadcastId),
+    index("digests_status_idx").on(t.status),
+    index("digests_status_date_idx").on(t.status, t.date),
+    index("digests_newsletter_status_date_idx").on(t.newsletterStatus, t.date),
+  ],
 );
 
 /**
@@ -307,9 +371,9 @@ export const stockQuotes = pgTable(
 );
 
 /**
- * Source of truth for newsletter recipients. Postgres row is written synchronously on
- * signup regardless of whether the Resend API call succeeds — `resendContactId` is
- * filled in best-effort so a transient Resend outage never loses a signup.
+ * Durable signup and synchronization ledger. Postgres captures every request before
+ * provider work, while the Resend segment remains authoritative for delivery-time
+ * unsubscribe state. `resendContactId` null means an active row still needs syncing.
  */
 export const subscribers = pgTable(
   "subscribers",
@@ -317,10 +381,59 @@ export const subscribers = pgTable(
     id: serial("id").primaryKey(),
     email: text("email").notNull(),
     resendContactId: text("resend_contact_id"),
+    resendSyncAttemptedAt: timestamp("resend_sync_attempted_at", { withTimezone: true }),
+    resendSyncError: text("resend_sync_error"),
     subscribedAt: timestamp("subscribed_at", { withTimezone: true }).notNull().defaultNow(),
     unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
   },
-  (t) => [uniqueIndex("subscribers_email_key").on(t.email)],
+  (t) => [
+    uniqueIndex("subscribers_email_key").on(t.email),
+    check("subscribers_email_canonical_check", sql`${t.email} = lower(btrim(${t.email}))`),
+  ],
+);
+
+/**
+ * Privacy-preserving fixed-window counters for unauthenticated mutation routes.
+ * `identityHash` is always an HMAC-SHA256 digest produced by
+ * lib/public-rate-limit.ts; raw client addresses and email addresses must never
+ * enter this table. The composite key identifies a fixed window; migration 0010's
+ * database function locks every requested key in deterministic order and updates
+ * all dimensions together or none.
+ */
+export const publicMutationRateLimits = pgTable(
+  "public_mutation_rate_limits",
+  {
+    scope: text("scope").notNull(),
+    identityHash: text("identity_hash").notNull(),
+    windowStartedAt: timestamp("window_started_at", { withTimezone: true }).notNull(),
+    requestCount: integer("request_count").notNull(),
+    requestLimit: integer("request_limit").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({
+      name: "public_mutation_rate_limits_pkey",
+      columns: [t.scope, t.identityHash, t.windowStartedAt],
+    }),
+    index("public_mutation_rate_limits_expires_idx").on(t.expiresAt),
+    check(
+      "public_mutation_rate_limits_scope_check",
+      sql`${t.scope} in ('subscribe_client', 'subscribe_email', 'submit_client')`,
+    ),
+    check(
+      "public_mutation_rate_limits_identity_hash_check",
+      sql`char_length(${t.identityHash}) = 64 and ${t.identityHash} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "public_mutation_rate_limits_count_check",
+      sql`${t.requestCount} >= 1 and ${t.requestLimit} >= 1 and ${t.requestCount} <= ${t.requestLimit}`,
+    ),
+    check(
+      "public_mutation_rate_limits_window_check",
+      sql`${t.expiresAt} > ${t.windowStartedAt}`,
+    ),
+  ],
 );
 
 export type Item = typeof items.$inferSelect;
@@ -333,6 +446,8 @@ export type Digest = typeof digests.$inferSelect;
 export type ResearchRun = typeof researchRuns.$inferSelect;
 export type StockQuote = typeof stockQuotes.$inferSelect;
 export type Subscriber = typeof subscribers.$inferSelect;
+export type PublicMutationRateLimit = typeof publicMutationRateLimits.$inferSelect;
 export type ItemType = (typeof itemTypeEnum.enumValues)[number];
 export type Platform = (typeof platformEnum.enumValues)[number];
 export type DigestStatus = (typeof digestStatusEnum.enumValues)[number];
+export type NewsletterStatus = (typeof newsletterStatusEnum.enumValues)[number];

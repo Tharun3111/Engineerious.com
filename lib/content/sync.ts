@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { posts } from "@/db/schema";
 import { getDb } from "@/lib/db";
 import type { BlogPost } from "@/lib/content/blog";
+import { httpUrlSchema } from "@/lib/editorial-safety";
 
 /**
  * Mirror MDX frontmatter into Postgres so repurpose jobs and distribution links have
@@ -39,9 +40,48 @@ export async function getPostRow(slug: string) {
   }
 }
 
+/** Public detail pages need only this small JSON field, never the article body. */
+export async function getPostDistribution(slug: string): Promise<unknown> {
+  try {
+    const [row] = await getDb()
+      .select({ distribution: posts.distribution })
+      .from(posts)
+      .where(eq(posts.slug, slug))
+      .limit(1);
+    return row?.distribution ?? null;
+  } catch {
+    // Distribution is optional; a database outage must not take down an MDX post.
+    return null;
+  }
+}
+
+/**
+ * Treat the JSON distribution column as untrusted at every read/write boundary.
+ * Old rows predate URL validation, so keep only normalized HTTP(S) destinations.
+ */
+export function sanitizeDistributionLinks(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+
+  const links: Array<[string, string]> = [];
+  for (const [platform, rawUrl] of Object.entries(value)) {
+    if (typeof rawUrl !== "string") continue;
+    const parsed = httpUrlSchema.safeParse(rawUrl.trim());
+    if (parsed.success) links.push([platform, parsed.data]);
+  }
+  return Object.fromEntries(links);
+}
+
 export async function setDistribution(slug: string, platform: string, url: string) {
-  const existing = await getPostRow(slug);
-  const distribution = { ...(existing?.distribution ?? {}), [platform]: url };
+  const parsedUrl = httpUrlSchema.safeParse(url.trim());
+  if (!parsedUrl.success) {
+    throw new Error("Distribution URL must be an absolute HTTP(S) URL.");
+  }
+
+  const existingDistribution = await getPostDistribution(slug);
+  const distribution = Object.fromEntries([
+    ...Object.entries(sanitizeDistributionLinks(existingDistribution)),
+    [platform, parsedUrl.data],
+  ]);
   await getDb().update(posts).set({ distribution, updatedAt: new Date() }).where(eq(posts.slug, slug));
   return distribution;
 }

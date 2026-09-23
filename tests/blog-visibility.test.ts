@@ -11,10 +11,20 @@ import { isPublished, type BlogPost } from "@/lib/content/blog";
  * so isVisible() is always true in this environment regardless of gate logic,
  * making a test of it here meaningless. isPublished() is the actual invariant.
  */
-function post(overrides: Partial<Pick<BlogPost, "draft" | "authenticityStatus">>): BlogPost {
+function post(
+  overrides: Partial<
+    Pick<
+      BlogPost,
+      "draft" | "origin" | "authenticityStatus" | "reviewedBy" | "reviewedAt"
+    >
+  >,
+): BlogPost {
   return {
     draft: true,
+    origin: "human",
     authenticityStatus: "pending",
+    reviewedBy: undefined,
+    reviewedAt: undefined,
     ...overrides,
   } as BlogPost;
 }
@@ -32,7 +42,41 @@ describe("isPublished", () => {
     expect(isPublished(post({ draft: false, authenticityStatus: undefined }))).toBe(false);
   });
 
-  it("is true only when both non-draft and verified", () => {
-    expect(isPublished(post({ draft: false, authenticityStatus: "verified" }))).toBe(true);
+  it("rejects verified rows without a valid review signature or known origin", () => {
+    expect(isPublished(post({ draft: false, authenticityStatus: "verified" }))).toBe(false);
+    expect(
+      isPublished(
+        post({
+          draft: false,
+          authenticityStatus: "verified",
+          origin: "legacy" as BlogPost["origin"],
+          reviewedBy: "Tharun",
+          reviewedAt: new Date("2026-08-25T12:00:00.000Z"),
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      isPublished(
+        post({
+          draft: false,
+          authenticityStatus: "verified",
+          reviewedBy: "   ",
+          reviewedAt: new Date("2026-08-25T12:00:00.000Z"),
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("is true only for a non-draft, verified, signed row with a known origin", () => {
+    expect(
+      isPublished(
+        post({
+          draft: false,
+          authenticityStatus: "verified",
+          reviewedBy: "Tharun",
+          reviewedAt: new Date("2026-08-25T12:00:00.000Z"),
+        }),
+      ),
+    ).toBe(true);
   });
 });

@@ -1,120 +1,306 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AuthorBadge } from "@/components/AuthorBadge";
-import { EntryTable } from "@/components/EntryTable";
+import { AiSignalList } from "@/components/AiSignalList";
+import { EvidenceRail } from "@/components/EvidenceRail";
 import { NewsletterCTA } from "@/components/NewsletterCTA";
 import { ScopeBlock } from "@/components/ScopeBlock";
-import { StatTiles } from "@/components/StatTiles";
-import { getPublishedPosts } from "@/lib/content/blog";
+import { getPublishedWritingPosts } from "@/lib/content/blog";
+import { currentDesk, type CurrentDeskEntry } from "@/lib/current-desk";
+import {
+  getCuratedAiSignals,
+  type CuratedAiQueryResult,
+} from "@/lib/curated-ai-queries";
+import { deriveDailyQuickSheet } from "@/lib/daily-brief";
+import {
+  getLatestDailyBrief,
+  type DailyBriefQueryResult,
+} from "@/lib/daily-queries";
 import { getPillar } from "@/lib/pillars";
+import { featuredProjects } from "@/lib/projects";
 import { isoDate } from "@/lib/time";
 
 export const revalidate = 300;
 
-/*
- * The front door teaches, or it shows why it's about to.
- *
- * Earlier versions of this page said the site was an agent-security
- * vulnerability tracker ("Your agent framework shipped a containment bug last
- * week") and led with a reproduction-status log. That was never the brief —
- * the actual intent, stated directly: build Tharun's personal brand, publish
- * his own writing about what he's learned building AI systems, and support it
- * with curated AI news. The one-line answer a visitor should leave with is
- * "Tharun teaches me AI engineering."
- *
- * So the hero demonstrates that instead of asserting it: the latest entry
- * renders inline with its scope block (what you'll be able to do after
- * reading it, and what it deliberately doesn't cover) — the site showing the
- * thing it does rather than describing it in the abstract.
- */
-export default async function HomePage() {
-  const posts = await getPublishedPosts();
-  const latest = posts[0];
-  const latestPillar = latest ? getPillar(latest.pillar) : undefined;
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
-  return (
-    <div className="space-y-10 py-10 sm:py-14">
-      <section>
-        <p className="eyebrow">AI engineering &middot; learned in public</p>
-        <h1 className="font-display mt-3 max-w-[19ch] text-balance text-[28px] font-semibold leading-[1.28] tracking-[-0.03em] sm:text-[36px]">
-          I write down what I learn about AI, so you don&rsquo;t have to learn it twice.
-        </h1>
-        <p className="mt-4 max-w-[62ch] text-[15.5px] leading-7 text-muted">
-          Evaluation, MCP, retrieval, and the production details a clean demo leaves out
-          &mdash; written by Tharun Chowdary, one entry at a time.
-        </p>
-      </section>
+const deskLanes = [
+  ["Build", "Production-minded generative and agentic AI systems"],
+  ["Understand", "LLMs, retrieval, agents, evaluation, and infrastructure"],
+  ["Publish", "Engineering notes, reviewed intelligence, and project decisions"],
+] as const;
 
-      {latest && (
-        <section className="rounded-lg border border-rule bg-surface p-5 sm:p-6">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span className="eyebrow">Latest entry</span>
-            <span className="ver text-muted">{isoDate(latest.date)}</span>
-            <span className="ver text-muted">&middot; {latest.readingMinutes} min</span>
-          </div>
-          <h2 className="font-display mt-2 max-w-[32ch] text-balance text-[19px] font-semibold leading-[1.35] tracking-[-0.02em]">
-            <Link href={`/blog/${latest.slug}`} className="hover:text-accent">
-              {latest.title}
-            </Link>
-          </h2>
-          <p className="mt-2 max-w-[64ch] text-[14.5px] leading-6 text-muted">{latest.dek}</p>
-          {latestPillar && <p className="mt-2 ver text-accent">{latestPillar.name}</p>}
-          <div className="mt-4">
-            <ScopeBlock teaches={latest.teaches} notCovered={latest.notCovered} />
-          </div>
-        </section>
-      )}
+export function DailyHomeModule({ result }: { result: DailyBriefQueryResult }) {
+  const latest = result.brief;
 
-      <StatTiles posts={posts} />
-
-      <div className="flex items-baseline justify-between gap-4 border-b border-fg pb-2.5">
-        <h2 className="font-mono text-[13px] font-medium tracking-[-0.01em]">every entry</h2>
-        <span className="section-label">{posts.length} total</span>
-      </div>
-
-      <EntryTable
-        posts={posts}
-        emptyMessage="Nothing published yet. The first entry goes up when there is one worth standing behind."
-      />
-
-      {posts.length > 0 && (
-        <p className="text-[13.5px]">
-          <Link href="/blog" className="font-mono font-medium text-accent hover:underline">
-            All entries &rarr;
-          </Link>
-        </p>
-      )}
-
-      <section className="grid gap-8 border-t-2 border-fg pt-10 lg:grid-cols-[minmax(0,1fr)_28rem]">
-        <div>
-          <p className="section-label">Who writes this</p>
-          <div className="mt-3 flex items-center gap-3">
-            <AuthorBadge size="lg" />
-            <h2 className="font-display max-w-[20ch] text-balance text-[21px] font-semibold leading-[1.25] tracking-[-0.02em]">
-              Tharun Chowdary
+  if (!latest) {
+    const unavailable = Boolean(result.error);
+    return (
+      <div data-feed-state={unavailable ? "unavailable" : "empty"}>
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <div>
+            <p className="eyebrow">Daily intelligence</p>
+            <h2
+              id="daily-home-title"
+              className="font-display mt-2 max-w-[30ch] text-balance text-[24px] font-semibold leading-[1.3] tracking-[-0.025em] sm:text-[29px]"
+            >
+              {unavailable
+                ? "The reviewed Daily Brief is temporarily unavailable."
+                : "The first reviewed brief is still on the editorial desk."}
             </h2>
           </div>
-          <p className="mt-4 max-w-[52ch] text-[15px] leading-7 text-muted">
-            I build AI systems and write down what breaks, what I got wrong, and what
-            actually held up past the demo. Every entry says whether it was tested here
-            and what it deliberately doesn&rsquo;t cover &mdash; the limits are part of the
-            teaching.
+          <span className="pill">No filler</span>
+        </div>
+        <p className="mt-4 max-w-[62ch] text-[15px] leading-7 text-muted">
+          {unavailable
+            ? "Private drafts are never used as a fallback. The public preview will return when its validated snapshot is available."
+            : "This slot will hold the day’s important developments, why they matter, one useful concept, and Tharun’s Take. It stays empty until the structured brief and its sources have passed human review."}
+        </p>
+        <Link
+          href="/daily"
+          className="mt-5 inline-flex min-h-11 items-center font-mono text-[12.5px] font-medium text-accent hover:underline"
+        >
+          See how the Daily Brief works <span aria-hidden="true">&nbsp;&rarr;</span>
+        </Link>
+      </div>
+    );
+  }
+
+  const quickSheet = deriveDailyQuickSheet(latest.brief);
+  return (
+    <article data-feed-state="published">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="eyebrow">Latest Daily Brief</p>
+        <span className="pill pill-accent">Human approved</span>
+      </div>
+      <p className="mt-4 font-mono text-[10.5px] uppercase tracking-[0.1em] text-muted">
+        <time dateTime={latest.date}>{latest.date}</time> &middot; {quickSheet.sourceCount}{" "}
+        {quickSheet.sourceCount === 1 ? "source" : "sources"}
+      </p>
+      <h2
+        id="daily-home-title"
+        className="font-display mt-2 max-w-[30ch] text-balance text-[24px] font-semibold leading-[1.3] tracking-[-0.025em] sm:text-[29px]"
+      >
+        <Link href={`/daily/${latest.date}`} className="hover:text-accent">
+          {latest.brief.title}
+        </Link>
+      </h2>
+      <p className="mt-4 max-w-[62ch] text-[15px] leading-7 text-muted">
+        {latest.brief.summary}
+      </p>
+
+      <dl className="mt-5 divide-y divide-rule border-y border-rule">
+        <div className="grid gap-1 py-3.5 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-5">
+          <dt className="section-label">{quickSheet.biggestStory.label}</dt>
+          <dd>
+            <p className="text-[14px] font-semibold leading-5">{quickSheet.biggestStory.title}</p>
+            <p className="mt-1 text-[13.5px] leading-5 text-muted">
+              {quickSheet.biggestStory.detail}
+            </p>
+          </dd>
+        </div>
+        <div className="grid gap-1 py-3.5 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-5">
+          <dt className="section-label">Human perspective</dt>
+          <dd>
+            <p className="text-[14px] font-semibold leading-5">Tharun&rsquo;s Take</p>
+            <p className="mt-1 text-[13.5px] leading-5 text-muted">{quickSheet.myTake.detail}</p>
+          </dd>
+        </div>
+      </dl>
+
+      <Link
+        href={`/daily/${latest.date}`}
+        className="mt-4 inline-flex min-h-11 items-center font-mono text-[12.5px] font-medium text-accent hover:underline"
+      >
+        Read the reviewed brief <span aria-hidden="true">&nbsp;&rarr;</span>
+      </Link>
+    </article>
+  );
+}
+
+export function AiHomeModule({ result }: { result: CuratedAiQueryResult }) {
+  if (result.signals.length === 0) return null;
+
+  return (
+    <section aria-labelledby="ai-home-title">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-fg pb-3">
+        <div>
+          <p className="section-label">Important AI developments</p>
+          <h2 id="ai-home-title" className="font-display mt-1 text-[21px] font-semibold">
+            Reviewed signal, not a raw feed
+          </h2>
+        </div>
+        <Link
+          href="/ai"
+          className="inline-flex min-h-11 items-center font-mono text-[11.5px] font-medium text-accent hover:underline"
+        >
+          Open the AI desk <span aria-hidden="true">&nbsp;&rarr;</span>
+        </Link>
+      </div>
+      <AiSignalList signals={result.signals} error={result.error} />
+    </section>
+  );
+}
+
+export default async function HomePage() {
+  const [posts, latestDaily, curatedAi] = await Promise.all([
+    getPublishedWritingPosts(),
+    getLatestDailyBrief(),
+    getCuratedAiSignals({ limit: 3 }),
+  ]);
+  const latest = posts[0];
+  const latestPillar = latest ? getPillar(latest.pillar) : undefined;
+  const deskEntries: readonly CurrentDeskEntry[] = currentDesk;
+  const project = featuredProjects[0];
+
+  return (
+    <div className="space-y-12 py-10 sm:space-y-16 sm:py-14">
+      <section className="grid items-start gap-9 border-b border-fg pb-10 lg:grid-cols-[minmax(0,1.55fr)_minmax(18rem,0.75fr)] lg:gap-16 lg:pb-12">
+        <div>
+          <p className="eyebrow">Tharun Chowdary Malepati &middot; AI / ML Engineer</p>
+          <h1 className="font-display mt-4 max-w-[22ch] text-balance text-[30px] font-semibold leading-[1.22] tracking-[-0.035em] sm:text-[40px] lg:text-[44px]">
+            I build AI systems, test what changes, and explain what holds up.
+          </h1>
+          <p className="mt-5 max-w-[63ch] text-[16px] leading-7 text-muted sm:text-[17px]">
+            Engineerious is my AI engineering desk on the internet: practical work on
+            LLMs, agents, retrieval, evaluation, and infrastructure &mdash; plus a
+            source-checked view of what is actually worth an engineer&rsquo;s attention.
           </p>
-          <Link
-            href="/about"
-            className="mt-6 inline-flex min-h-11 items-center text-[13.5px] font-semibold text-accent underline decoration-1 underline-offset-4"
-          >
-            About Tharun
+          <div className="mt-7 flex flex-wrap gap-3">
+            <Link href="/daily" className="btn btn-primary">
+              Explore the Daily Brief
+            </Link>
+            <Link href="/blog" className="btn btn-secondary">
+              Read the writing
+            </Link>
+            <Link href="/projects" className="btn btn-ghost">
+              View projects <span aria-hidden="true">&rarr;</span>
+            </Link>
+          </div>
+        </div>
+
+        <aside className="border-l-2 border-accent pl-5" aria-label="What this desk covers">
+          <p className="section-label">On this desk</p>
+          <dl className="mt-4 divide-y divide-rule border-y border-rule">
+            {deskLanes.map(([label, detail]) => (
+              <div key={label} className="py-3.5">
+                <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-accent-strong">
+                  {label}
+                </dt>
+                <dd className="mt-1.5 text-[13.5px] leading-5 text-muted">{detail}</dd>
+              </div>
+            ))}
+          </dl>
+        </aside>
+      </section>
+
+      <EvidenceRail />
+
+      <section
+        aria-labelledby="daily-home-title"
+        className="grid gap-10 border-b border-rule pb-12 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)] lg:gap-16"
+      >
+        <DailyHomeModule result={latestDaily} />
+
+        <aside aria-labelledby="current-desk-title">
+          <p className="section-label">Working set</p>
+          <h2 id="current-desk-title" className="font-display mt-2 text-[18px] font-semibold">
+            Current desk
+          </h2>
+          <dl className="mt-4 divide-y divide-rule border-y border-rule">
+            {deskEntries.map((entry) => (
+              <div key={entry.kind} className="py-3.5">
+                <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">{entry.label}</dt>
+                <dd className="mt-1.5 text-[13.5px] leading-5 text-fg">
+                  {entry.href ? (
+                    <Link href={entry.href} className="font-medium text-accent hover:underline">
+                      {entry.title}
+                    </Link>
+                  ) : (
+                    entry.title
+                  )}
+                </dd>
+                <p className="mt-1 text-[12.5px] leading-5 text-muted">{entry.detail}</p>
+              </div>
+            ))}
+          </dl>
+        </aside>
+      </section>
+
+      <section aria-labelledby="latest-writing-title">
+        <div className="flex items-baseline justify-between gap-4 border-b border-fg pb-2.5">
+          <div>
+            <p className="section-label">Latest writing</p>
+            <h2 id="latest-writing-title" className="sr-only">Latest writing</h2>
+          </div>
+          <Link href="/blog" className="font-mono text-[11.5px] font-medium text-accent hover:underline">
+            All writing <span aria-hidden="true">&rarr;</span>
           </Link>
         </div>
 
-        <div className="border border-rule bg-surface p-6 sm:p-8">
-          <NewsletterCTA
-            variant="compact"
-            heading="Get the next entry"
-            blurb="Sent when there's something worth reading, not on a schedule."
-          />
+        {latest ? (
+          <article className="grid gap-6 py-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.75fr)] lg:gap-12">
+            <div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted">
+                <span className="ver">{isoDate(latest.date)}</span>
+                <span aria-hidden="true">&middot;</span>
+                <span className="ver">{latest.readingMinutes} min</span>
+                {latestPillar && <span className="pill pill-accent">{latestPillar.name}</span>}
+              </div>
+              <h3 className="font-display mt-3 max-w-[32ch] text-balance text-[22px] font-semibold leading-[1.35] tracking-[-0.02em]">
+                <Link href={`/blog/${latest.slug}`} className="hover:text-accent">
+                  {latest.title}
+                </Link>
+              </h3>
+              <p className="mt-3 max-w-[62ch] text-[14.5px] leading-6 text-muted">{latest.dek}</p>
+            </div>
+            <ScopeBlock teaches={latest.teaches} notCovered={latest.notCovered} />
+          </article>
+        ) : (
+          <div data-feed-state="empty" className="py-8">
+            <p className="max-w-[58ch] text-[15px] leading-7 text-muted">
+              No writing is public yet. Drafts stay private until the claims, sources,
+              and authorship are ready to stand behind.
+            </p>
+          </div>
+        )}
+      </section>
+
+      <AiHomeModule result={curatedAi} />
+
+      <section className="grid gap-8 border-y border-rule py-10 lg:grid-cols-[minmax(0,0.65fr)_minmax(0,1.35fr)] lg:gap-16" aria-labelledby="project-title">
+        <div>
+          <p className="eyebrow">Selected project</p>
+          <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.12em] text-positive">{project.status}</p>
         </div>
+        <div>
+          <h2 id="project-title" className="font-display text-[24px] font-semibold tracking-[-0.025em]">
+            {project.title}
+          </h2>
+          <p className="mt-3 max-w-[62ch] text-[15px] leading-7 text-muted">
+            {project.summary} The case study explains the architecture and the decisions
+            behind its human-controlled publication boundary.
+          </p>
+          <Link href={`/projects/${project.slug}`} className="mt-5 inline-flex min-h-11 items-center font-mono text-[12.5px] font-medium text-accent hover:underline">
+            Read the case study <span aria-hidden="true">&nbsp;&rarr;</span>
+          </Link>
+        </div>
+      </section>
+
+      <section className="grid gap-8 bg-surface p-6 sm:p-8 lg:grid-cols-[minmax(16rem,0.65fr)_minmax(0,1.35fr)] lg:gap-12">
+        <div>
+          <p className="eyebrow">Proof Loop newsletter</p>
+          <h2 className="font-display mt-2 max-w-[18ch] text-[22px] font-semibold leading-snug">
+            Useful work, when it is ready.
+          </h2>
+        </div>
+        <NewsletterCTA
+          variant="compact"
+          hideHeading
+          blurb="Get reviewed AI engineering notes and future briefs. No automatic daily send, and no made-up cadence."
+        />
       </section>
     </div>
   );

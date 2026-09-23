@@ -6,7 +6,7 @@ import { CLOSED_PUBLIC_PREFIXES, DEFERRED_PUBLIC_PREFIXES } from "@/lib/public-l
 export default function robots(): MetadataRoute.Robots {
   const site = env.siteUrl.replace(/\/$/, "");
 
-  // Must track middleware.ts's gate exactly. Disallowing a path that 200s (or
+  // Must track proxy.ts's gate exactly. Disallowing a path that 200s (or
   // allowing one that 404s) both misinform crawlers. Read the prefixes from
   // lib/public-launch rather than restating them: this list had already drifted
   // out of sync with the routes actually being served.

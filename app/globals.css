@@ -28,6 +28,9 @@
    * not spent on content classification. The old palette burned red on
    * "unpatched," which doesn't exist as a concept here any more. */
   --alarm: #b3261e;
+  --positive: #176b45;
+  --positive-tint: #e8f5ee;
+  --negative: #9b2c1f;
   --ring: var(--accent);
 
   /* One reading measure for the whole site, in rem not ch — `ch` is relative to
@@ -50,22 +53,24 @@
   --color-accent-tint: var(--accent-tint);
   --color-accent-fg: var(--accent-fg);
   --color-alarm: var(--alarm);
+  --color-positive: var(--positive);
+  --color-positive-tint: var(--positive-tint);
+  --color-negative: var(--negative);
   --color-ring: var(--ring);
 
-  /* Three roles, hard budget — the register Tharun picked is "dense, technical,
-   * information-rich," not editorial.
+  /* Two faces, three semantic roles — the register is dense, technical, and
+   * information-rich without turning every word into code.
    *
    * Display (headlines only): Martian Mono. Deliberately not a serif or a safe
    * grotesk — distinctive enough that a screenshot is recognisable.
    * Body (default, prose, UI labels): Instrument Sans — carries long-form
    * reading, which a display mono cannot do at paragraph length.
-   * Data (dates, refs, table cells, metadata): DM Mono. A SEMANTIC, not a
-   * texture — it means "this value is exact." The moment it leaks into
-   * headlines or prose it stops meaning that and the site loses a channel it
-   * can't get back. */
+   * Data (dates, refs, table cells, metadata): Martian Mono at utility scale.
+   * This is a SEMANTIC role, not a texture — it means "this value is exact."
+   * The display and data roles share a family but never a scale or weight. */
   --font-sans: "Instrument Sans Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Martian Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
-  --font-mono: "DM Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --font-mono: "Martian Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 /*
@@ -275,22 +280,22 @@
  * strip elsewhere on the same page. */
 .prose h2 {
   margin-top: 2.3em;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 25px;
+  font-weight: 680;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: var(--fg);
 }
 
 .prose h3 {
   margin-top: 1.9em;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 19px;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--fg);
 }
 
 .prose a {
@@ -316,8 +321,9 @@
 .prose strong {
   color: var(--fg);
   font-weight: 700;
-  background: linear-gradient(to bottom, transparent 70%, var(--accent-tint) 70%);
-  padding: 0 0.05em;
+  background: var(--accent-tint);
+  border-radius: 2px;
+  padding: 0 0.12em;
 }
 
 .prose ul,
@@ -456,6 +462,96 @@
 }
 
 /* ---------------------------------------------------------------------- */
+/* Evidence rail — the recurring Engineerious trust signature.             */
+/*                                                                         */
+/* This is intentionally a horizontal editorial rule, not a card grid. It  */
+/* makes provenance scannable in one pass and remains compact enough to     */
+/* recur on the homepage, Daily, and authored analysis.                     */
+/* ---------------------------------------------------------------------- */
+.evidence-rail {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.8fr) minmax(0, 2.2fr);
+  border-block: 1px solid var(--fg);
+  background: var(--surface);
+}
+
+.evidence-rail__intro {
+  padding: 16px 18px;
+  border-right: 1px solid var(--rule-strong);
+}
+
+.evidence-rail__intro > p:last-child:not(:first-child) {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.evidence-rail__signals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.evidence-rail__signals > div {
+  padding: 16px 14px;
+}
+
+.evidence-rail__signals > div + div {
+  border-left: 1px solid var(--rule);
+}
+
+.evidence-rail__signals dt {
+  color: var(--accent-strong);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.evidence-rail__signals dd {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+@media (max-width: 800px) {
+  .evidence-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .evidence-rail__intro {
+    border-right: 0;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+
+  .evidence-rail__signals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .evidence-rail__signals > div:nth-child(3) {
+    border-left: 0;
+  }
+
+  .evidence-rail__signals > div:nth-child(n + 3) {
+    border-top: 1px solid var(--rule);
+  }
+}
+
+@media (max-width: 430px) {
+  .evidence-rail__signals {
+    grid-template-columns: 1fr;
+  }
+
+  .evidence-rail__signals > div + div,
+  .evidence-rail__signals > div:nth-child(3) {
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
+}
+
+/* ---------------------------------------------------------------------- */
 /* Scope block — the signature object of the redesign.                     */
 /*                                                                         */
 /* Not the ⌘K palette (Linear, Raycast and Vercel already have that — it's  */
@@ -486,7 +582,7 @@
   background: var(--surface-2);
 }
 
-.scope h4 {
+.scope-title {
   font-family: var(--font-mono);
   font-size: 9.5px;
   font-weight: 500;
@@ -496,7 +592,7 @@
   color: var(--fg);
 }
 
-.scope > div + div h4 {
+.scope > div + div .scope-title {
   color: var(--muted);
 }
 
@@ -596,7 +692,10 @@
 .entry-table-wrap {
   border: 1px solid var(--rule);
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
   background: var(--surface);
 }
 
@@ -674,6 +773,38 @@
   box-shadow: 0 20px 60px rgba(15, 23, 41, 0.22);
 }
 
+.cmdk-head {
+  min-height: 44px;
+  padding: 8px 10px 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.cmdk-head label {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--fg);
+}
+
+.cmdk-close {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 6px;
+  padding-inline: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.cmdk-close:hover {
+  color: var(--accent);
+  background: var(--surface-2);
+}
+
 .cmdk-input {
   width: 100%;
   border: 0;
@@ -699,12 +830,20 @@
 }
 
 .cmdk-item {
+  padding: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.cmdk-item button {
+  width: 100%;
+  min-height: 44px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 11px;
   align-items: center;
   padding: 9px 11px;
-  border-radius: 6px;
+  text-align: left;
   cursor: pointer;
 }
 

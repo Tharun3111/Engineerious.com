@@ -3,9 +3,10 @@ import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { authorizeCron } from "@/lib/auth";
+import { CURATED_AI_CACHE_TAG } from "@/lib/curated-ai-queries";
 import { getDb } from "@/lib/db";
 import { FEED_CACHE_TAG } from "@/lib/queries";
-import { GRAVITY } from "@/lib/ranking";
+import { AGE_OFFSET_HOURS, GRAVITY, POINTS_OFFSET } from "@/lib/ranking";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export const maxDuration = 60;
  *   score = (points - 1 + source_weight) / (age_hours + 2) ^ 1.8
  *
  * Scoped to the last 60 days. Beyond that the decay term has already driven score
- * below anything on a feed page, so rewriting those rows every 15 minutes is waste.
+ * below anything on a feed page, so rewriting those rows on every sweep is waste.
  * lib/ranking.ts holds the same formula for insert-time scoring — keep them in sync.
  */
 const RESCORE_WINDOW_DAYS = 60;
@@ -30,12 +31,12 @@ export async function GET(request: Request) {
   try {
     const result = await getDb().execute(sql`
       update items
-         set score = (points - 1 + source_weight)
+         set score = (points - ${POINTS_OFFSET} + source_weight)
                      / power(
                          greatest(
                            0,
                            extract(epoch from (now() - coalesce(published_at, first_seen))) / 3600
-                         ) + 2,
+                         ) + ${AGE_OFFSET_HOURS},
                          ${GRAVITY}
                        ),
              ranked_at = now()
@@ -43,11 +44,14 @@ export async function GET(request: Request) {
     `);
 
     // Ordering just changed, so the cached feed slices are stale by definition.
-    revalidateTag(FEED_CACHE_TAG);
+    revalidateTag(FEED_CACHE_TAG, "max");
+    revalidateTag(CURATED_AI_CACHE_TAG, { expire: 0 });
 
     return NextResponse.json({
       ok: true,
       gravity: GRAVITY,
+      ageOffsetHours: AGE_OFFSET_HOURS,
+      pointsOffset: POINTS_OFFSET,
       windowDays: RESCORE_WINDOW_DAYS,
       // rowCount's shape differs slightly between the neon-http and node-postgres
       // drivers (see lib/db.ts) — read it defensively rather than typing around it.

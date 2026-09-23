@@ -3,25 +3,38 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { repurposeJobs } from "@/db/schema";
+import { authorizeAdmin } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { LAUNCH_PLATFORMS, isCopyReadyPlatform } from "@/lib/repurpose/launch-policy";
+import {
+  adminUnauthorizedResponse,
+  JSON_BODY_LIMITS,
+  readBoundedJsonMutation,
+} from "@/lib/request-safety";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const bodySchema = z.object({
-  id: z.number().int().positive(),
-  action: z.enum(["save", "approve", "reject"]),
-  draft: z.string().min(1).optional(),
-  scheduledFor: z.iso.datetime().optional(),
-});
+const bodySchema = z
+  .object({
+    id: z.number().int().positive(),
+    action: z.enum(["save", "approve", "reject"]),
+    draft: z.string().min(1).optional(),
+    scheduledFor: z.iso.datetime().optional(),
+  })
+  .strict();
 
 /**
  * Launch approval is copy-ready only. It records the human-reviewed LinkedIn copy and
  * never contacts a social network. Manual paste is the publication boundary.
  */
 export async function POST(request: Request) {
-  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  if (!authorizeAdmin(request)) return adminUnauthorizedResponse();
+
+  const body = await readBoundedJsonMutation(request, JSON_BODY_LIMITS.admin);
+  if (!body.ok) return body.response;
+
+  const parsed = bodySchema.safeParse(body.value);
   if (!parsed.success) {
     return NextResponse.json({ error: "Body must be { id, action, draft?, scheduledFor? }" }, { status: 400 });
   }

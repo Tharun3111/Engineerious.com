@@ -1,60 +1,182 @@
 import { expect, test } from "@playwright/test";
 
-test("visitor-first public shell explains the value and exposes its core sections", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByRole("img", { name: "Engineerious" }).first()).toBeVisible();
-  await expect(
-    page.getByRole("heading", {
-      level: 1,
-      name: "Turn AI releases into engineering decisions.",
-    }),
-  ).toBeVisible();
-  await expect(page.getByText("AI news, model analysis, and production guides", { exact: true }).first()).toBeVisible();
-  await expect(page.getByRole("link", { name: "Read AI news" }).first()).toBeVisible();
-  await expect(page.getByText("Finished analysis moves to the engineering blog after review.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "AI news", exact: true }).first()).toBeVisible();
-  await expect(page.getByRole("link", { name: "Models", exact: true }).first()).toBeVisible();
-  await expect(page.getByRole("link", { name: "Blog", exact: true }).first()).toBeVisible();
+test("visitor-first public shell has a usable identity, primary navigation, and main heading", async ({ page }) => {
+  const response = await page.goto("/");
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Engineerious home" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("I build AI systems");
+  await expect(page.getByText("Tharun Chowdary Malepati · AI / ML Engineer")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Engineerious evidence standard" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Explore the Daily Brief" })).toBeVisible();
 
   await page.goto("/about");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Turning AI engineering work into useful public knowledge.",
-  );
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Tharun Chowdary Malepati");
 });
 
-test("news, models, and blog are distinct public endpoints", async ({ page }) => {
-  const endpoints = [
-    ["/news", "AI news for engineering decisions."],
-    ["/models", "Model updates compared for real-world use."],
-    ["/blog", "Practical guides for building reliable AI systems."],
-  ] as const;
-
-  for (const [path, heading] of endpoints) {
-    const response = await page.goto(path);
-    expect(response?.status(), path).toBe(200);
-    await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
-    await expect(page.locator('[data-feed-state="error"]')).toHaveCount(0);
+test("primary destinations are honest and linked", async ({ page, request }) => {
+  for (const path of ["/daily", "/ai", "/projects", "/projects/engineerious"]) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(200);
   }
+
+  await page.goto("/daily");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  const dailyState = page.locator("[data-feed-state]");
+  if (await dailyState.count()) {
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  } else {
+    await expect(page.getByText("Human approved").first()).toBeVisible();
+    const robots = page.locator('meta[name="robots"]');
+    const robotsContent = (await robots.count()) ? await robots.getAttribute("content") : null;
+    expect(robotsContent ?? "").not.toMatch(/noindex/);
+  }
+
+  await page.goto("/ai");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByText("Automation").first()).toBeVisible();
+
+  await page.goto("/projects/engineerious");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Engineerious");
+  await expect(page.getByRole("heading", { name: "Engineering decisions" })).toBeVisible();
+  await expect(page.getByText("In development").first()).toBeVisible();
 });
 
-test("open-source, resources, and submit are live once PUBLIC_RESEARCH_ENABLED=true", async ({
+test("the 320px shell uses an accessible menu without horizontal overflow", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.goto("/");
+
+  const overflow = await page.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    page: document.documentElement.scrollWidth,
+  }));
+  expect(overflow.page).toBeLessThanOrEqual(overflow.viewport);
+
+  const menuButton = page.getByRole("button", { name: "Open menu" });
+  const searchButton = page.getByRole("button", { name: /Search/ });
+  await expect(menuButton).toBeVisible();
+  await expect(searchButton).toBeVisible();
+
+  for (const control of [menuButton, searchButton]) {
+    const box = await control.boundingBox();
+    expect(box?.width).toBeGreaterThanOrEqual(44);
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+  }
+
+  await menuButton.click();
+  const mobileMenu = page.locator("#mobile-primary-menu");
+  await expect(mobileMenu).toBeVisible();
+  for (const label of ["Daily", "Writing", "AI", "Projects", "About", "Subscribe"]) {
+    await expect(mobileMenu.getByRole("link", { name: label, exact: true })).toBeVisible();
+  }
+
+  await page.keyboard.press("Escape");
+  await expect(mobileMenu).toBeHidden();
+  await expect(page.getByRole("button", { name: "Open menu" })).toBeFocused();
+});
+
+test("unfinished research surfaces stay closed and non-indexable", async ({ request }) => {
+  for (const path of ["/news", "/news/1", "/models", "/models/1", "/resources"]) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(404);
+    expect(response.headers()["x-robots-tag"], path).toBe("noindex, nofollow");
+  }
+
+  const blog = await request.get("/blog");
+  expect(blog.status()).toBe(200);
+});
+
+test("deferred research routes move together behind PUBLIC_RESEARCH_ENABLED", async ({
   page,
   request,
 }) => {
   const endpoints = [
     ["/open-source", "Open-source releases worth evaluating."],
-    ["/resources", "Guides and templates for reliable AI systems"],
     ["/submit", "Suggest a link for review"],
+    ["/pillars/eval-first", null],
   ] as const;
+
+  const gateProbe = await request.get("/open-source");
+  const expectedStatus = gateProbe.status();
+  expect([200, 404]).toContain(expectedStatus);
 
   for (const [path, heading] of endpoints) {
     const response = await request.get(path);
-    expect(response.status(), path).toBe(200);
-    expect(response.headers()["x-robots-tag"], path).toBeUndefined();
+    expect(response.status(), path).toBe(expectedStatus);
 
-    await page.goto(path);
-    await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
+    if (expectedStatus === 404) {
+      expect(response.headers()["x-robots-tag"], path).toBe("noindex, nofollow");
+    } else {
+      expect(response.headers()["x-robots-tag"], path).toBeUndefined();
+      await page.goto(path);
+      const pageHeading = page.getByRole("heading", { level: 1 });
+      if (heading) await expect(pageHeading).toHaveText(heading);
+      else await expect(pageHeading).toBeVisible();
+    }
   }
+});
+
+test("sitemap never advertises closed or utility routes and follows Daily visibility", async ({ request }) => {
+  const response = await request.get("/sitemap.xml");
+  expect(response.status()).toBe(200);
+  const sitemap = await response.text();
+
+  for (const path of ["/news", "/models", "/resources", "/submit"]) {
+    expect(sitemap, path).not.toContain(path);
+  }
+
+  const daily = await request.get("/daily");
+  const dailyHtml = await daily.text();
+  const dailyIsNoindex = /<meta[^>]+name="robots"[^>]+noindex/i.test(dailyHtml);
+  expect(sitemap.includes("/daily")).toBe(!dailyIsNoindex);
+
+  const ai = await request.get("/ai");
+  const aiHtml = await ai.text();
+  const aiIsNoindex = /<meta[^>]+name="robots"[^>]+noindex/i.test(aiHtml);
+  expect(sitemap.includes("/ai")).toBe(!aiIsNoindex);
+  expect(sitemap).toContain("/projects/engineerious");
+});
+
+test("public search navigates across content kinds and restores keyboard focus", async ({ page }) => {
+  await page.goto("/");
+  const trigger = page.getByRole("button", { name: "Search Engineerious" });
+
+  await page.keyboard.press("Control+K");
+  const input = page.getByRole("combobox", { name: "Search Engineerious" });
+  await expect(input).toBeFocused();
+  await input.fill("Engineerious");
+  await expect(page.getByRole("option").filter({ hasText: "Project" })).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/projects\/engineerious$/);
+
+  await page.goto("/");
+  await page.keyboard.press("Control+K");
+  await expect(page.getByRole("combobox", { name: "Search Engineerious" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(trigger).toBeFocused();
+});
+
+test("unknown topic slugs receive a literal non-indexable 404", async ({ request }) => {
+  const response = await request.get("/topics/not-a-topic");
+  expect(response.status()).toBe(404);
+  expect(response.headers()["x-robots-tag"]).toBe("noindex, nofollow");
+});
+
+test("private or invalid Daily snapshots never resolve as public dates", async ({ request }) => {
+  for (const path of ["/daily/not-a-date", "/daily/2026-02-30"]) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(404);
+  }
+});
+
+test("privacy disclosure is public and linked from the site footer", async ({ page, request }) => {
+  const response = await request.get("/privacy");
+  expect(response.status()).toBe(200);
+
+  await page.goto("/privacy");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Privacy, in plain language.");
+  await expect(page.getByRole("heading", { name: "Page analytics" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
 });
 
 test("newsletter error is truthful and recoverable", async ({ page }) => {
@@ -74,9 +196,19 @@ test("newsletter error is truthful and recoverable", async ({ page }) => {
 
 test("newsletter prevents duplicate submits while the provider is slow", async ({ page }) => {
   let requests = 0;
+  let markRequestStarted!: () => void;
+  let releaseResponse!: () => void;
+  const requestStarted = new Promise<void>((resolve) => {
+    markRequestStarted = resolve;
+  });
+  const responseGate = new Promise<void>((resolve) => {
+    releaseResponse = resolve;
+  });
+
   await page.route("**/api/subscribe", async (route) => {
     requests += 1;
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    markRequestStarted();
+    await responseGate;
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -88,9 +220,11 @@ test("newsletter prevents duplicate submits while the provider is slow", async (
   await page.getByLabel("Email address").fill("reader@example.com");
   const submit = page.getByRole("button", { name: "Subscribe for updates" });
   await submit.click();
+  await requestStarted;
   await expect(page.getByRole("button", { name: "Subscribing…" })).toBeDisabled();
+  releaseResponse();
   await expect(page.getByRole("status")).toHaveText(
-    "You're subscribed. Check your inbox to confirm.",
+    "Thanks. Your signup request has been received.",
   );
   await expect(page.getByLabel("Email address")).toHaveValue("");
   expect(requests).toBe(1);

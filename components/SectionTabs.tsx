@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { FeedSort } from "@/lib/queries";
 
 /** /news and /models are closed (lib/public-launch.ts). */
-const PUBLIC_SECTIONS = [{ label: "Blog", path: "/blog" }] as const;
+const PUBLIC_SECTIONS = [{ label: "Writing", path: "/blog" }] as const;
 
 /** A tab strip of one is just a heading wearing an underline — it offers no
  *  choice and costs a row of chrome. Renders nothing until a second public

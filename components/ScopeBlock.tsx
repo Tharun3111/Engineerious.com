@@ -14,9 +14,9 @@ export function ScopeBlock({
   if (teaches.length === 0 && notCovered.length === 0) return null;
 
   return (
-    <div className="scope">
+    <section className="scope" aria-label="Entry scope">
       <div>
-        <h4>You&rsquo;ll be able to</h4>
+        <p className="scope-title">You&rsquo;ll be able to</p>
         {teaches.length > 0 ? (
           <ul>
             {teaches.map((item) => (
@@ -28,7 +28,7 @@ export function ScopeBlock({
         )}
       </div>
       <div>
-        <h4>This won&rsquo;t cover</h4>
+        <p className="scope-title">This won&rsquo;t cover</p>
         {notCovered.length > 0 ? (
           <ul>
             {notCovered.map((item) => (
@@ -39,6 +39,6 @@ export function ScopeBlock({
           <p className="text-[13.5px] text-muted">Nothing excluded.</p>
         )}
       </div>
-    </div>
+    </section>
   );
 }

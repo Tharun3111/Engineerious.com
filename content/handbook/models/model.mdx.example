@@ -1,0 +1,61 @@
+---
+schemaVersion: 1
+kind: model
+title: "<specific model and version>"
+summary: "<plain-language, date-bounded summary>"
+publishedAt: "<YYYY-MM-DD>"
+updatedAt: "<YYYY-MM-DD>"
+draft: true
+origin: human
+sourceStatus: primary
+testedStatus: not_tested
+authenticityStatus: pending
+reviewedBy: "<human reviewer>"
+reviewedAt: "<ISO 8601 timestamp after the final edit>"
+myTake: >-
+  <the author's own analysis; distinguish judgment from vendor claims>
+tags:
+  - "<descriptive tag>"
+topicSlugs: []
+sources:
+  - label: "<specific model card, documentation, or paper title>"
+    publisher: "<publisher or organization>"
+    url: "<https://source-url>"
+    publishedAt: "<YYYY-MM-DD if known>"
+    accessedAt: "<YYYY-MM-DD>"
+modelFacts:
+  lab: "<model lab>"
+  releaseDate: "<YYYY-MM-DD>"
+  accessStatus: public # public | limited | private | deprecated
+  openStatus: closed # open_source | open_weights | closed | not_disclosed
+  # Add only sourced optional fields; remove every line that is not verified.
+  # license: "<license name or identifier>"
+  # contextWindow: <positive integer>
+  # modalities: [text]
+  # api: true
+  # local: false
+  # toolCalling: true
+  # structuredOutput: true
+  # reasoning: false
+  # fineTuning: false
+---
+
+## What it is
+
+<Identify the exact model/version and what the lab says it is.>
+
+## Capabilities
+
+<Describe sourced capabilities and separate benchmarks from observed behavior.>
+
+## Constraints
+
+<Record known limits, access constraints, and uncertainty.>
+
+## When to use it
+
+<Name the requirements that make it a credible option.>
+
+## When not to use it
+
+<Name the requirements or risks that should rule it out.>

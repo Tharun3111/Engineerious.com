@@ -1,0 +1,1 @@
+ALTER TYPE "public"."digest_status" ADD VALUE 'rejected' BEFORE 'failed';

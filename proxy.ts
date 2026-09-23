@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { shouldCloseResearchPath } from "@/lib/public-launch";
+import {
+  isInvalidDailyDatePath,
+  isInvalidTopicPath,
+  shouldCloseResearchPath,
+} from "@/lib/public-launch";
 
 /**
  * HTTP Basic auth over /admin and /api/admin.
@@ -10,7 +14,8 @@ import { shouldCloseResearchPath } from "@/lib/public-launch";
  * /browse can drive the authenticated screens by importing real browser cookies or
  * passing the header directly.
  *
- * Runs on the edge runtime, so no node:crypto — hence the hand-rolled comparison.
+ * Runs at the request boundary before route rendering. The comparison stays
+ * dependency-free so this file remains small and portable.
  */
 
 const REALM = 'Basic realm="Engineerious admin", charset="UTF-8"';
@@ -29,7 +34,17 @@ function unauthorized() {
   });
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
+  if (
+    isInvalidDailyDatePath(request.nextUrl.pathname) ||
+    isInvalidTopicPath(request.nextUrl.pathname)
+  ) {
+    return new NextResponse("Not found.", {
+      status: 404,
+      headers: { "X-Robots-Tag": "noindex, nofollow" },
+    });
+  }
+
   if (shouldCloseResearchPath(request.nextUrl.pathname, process.env.PUBLIC_RESEARCH_ENABLED)) {
     return new NextResponse("Not found.", {
       status: 404,
@@ -77,11 +92,13 @@ export const config = {
     "/admin/:path*",
     "/admin",
     "/api/admin/:path*",
+    "/daily/:path*",
     "/news/:path*",
     "/models/:path*",
     "/open-source/:path*",
     "/resources/:path*",
     "/submit/:path*",
     "/pillars/:path*",
+    "/topics/:path*",
   ],
 };

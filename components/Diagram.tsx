@@ -34,16 +34,10 @@ function toMermaidSyntax(spec: DiagramSpec): string {
  */
 export function Diagram({ spec }: { spec?: DiagramSpec | null }) {
   const reactId = useId();
-  const [svg, setSvg] = useState<string | null>(null);
+  const specKey = spec ? JSON.stringify(spec) : "";
+  const [rendered, setRendered] = useState<{ key: string; svg: string } | null>(null);
 
   useEffect(() => {
-    // Reset synchronously, before the async render starts — without this, a client
-    // navigation from one post's diagram to a different post's diagram (App Router
-    // reuses this component's instance/state across sibling dynamic-route
-    // navigations; nothing here forces a remount) would show the PREVIOUS post's
-    // rendered SVG under the new post's title/step-list text until the new render
-    // resolves, or indefinitely if it fails.
-    setSvg(null);
     if (!spec || spec.steps.length < 2) return;
     let cancelled = false;
 
@@ -53,19 +47,18 @@ export function Diagram({ spec }: { spec?: DiagramSpec | null }) {
         mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "neutral" });
         const id = `diagram-${reactId.replace(/[^a-zA-Z0-9]/g, "")}`;
         const { svg: rendered } = await mermaid.render(id, toMermaidSyntax(spec));
-        if (!cancelled) setSvg(rendered);
+        if (!cancelled) setRendered({ key: specKey, svg: rendered });
       } catch (error) {
         console.error("[Diagram] render failed:", error);
-        // svg is already null from the reset above — a failed render shows nothing,
-        // not a stale diagram from whatever spec rendered last.
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [spec, reactId]);
+  }, [spec, specKey, reactId]);
 
+  const svg = rendered?.key === specKey ? rendered.svg : null;
   if (!spec || spec.steps.length < 2 || !svg) return null;
 
   return (

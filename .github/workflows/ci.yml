@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: engineerious_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d engineerious_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: true
+      NEXT_TELEMETRY_DISABLED: 1
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/engineerious_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Audit locked dependencies
+        run: npm audit --audit-level=high
+      - name: Verify migration journal and snapshots
+        run: npm run db:check
+      - name: Verify generated database schema is committed
+        run: |
+          npm run db:generate
+          git diff --exit-code -- db/schema.ts db/migrations
+      - name: Apply migrations to PostgreSQL 16
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+        run: npm run db:migrate
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:coverage
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: PLAYWRIGHT_PRODUCTION=true npm run test:e2e

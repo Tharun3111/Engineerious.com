@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { items, sources, type NewItem } from "@/db/schema";
 import { getDb } from "@/lib/db";
 import { urlHash } from "@/lib/dedupe";
+import { isHttpUrl } from "@/lib/editorial-safety";
 import { env } from "@/lib/env";
 import { computeScore } from "@/lib/ranking";
 import type { AdapterResult, IngestAdapter, RawItem } from "@/lib/adapters/types";
@@ -15,7 +16,27 @@ function chunk<T>(list: T[], size: number): T[][] {
   return out;
 }
 
-function toRow(raw: RawItem, now: Date): NewItem {
+function sanitizeRawJson(raw: unknown): NewItem["rawJson"] {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return (raw ?? null) as NewItem["rawJson"];
+  }
+
+  const sanitized = { ...(raw as Record<string, unknown>) };
+  if ("discussion" in sanitized) {
+    if (typeof sanitized.discussion !== "string" || !isHttpUrl(sanitized.discussion)) {
+      delete sanitized.discussion;
+    } else {
+      sanitized.discussion = sanitized.discussion.trim();
+    }
+  }
+  return sanitized as NewItem["rawJson"];
+}
+
+function toRow(raw: RawItem, now: Date): NewItem | null {
+  if (typeof raw.url !== "string") return null;
+  const safeUrl = raw.url.trim();
+  if (!isHttpUrl(safeUrl)) return null;
+
   const publishedAt = raw.publishedAt ?? null;
   const points = raw.points ?? 0;
 
@@ -23,8 +44,8 @@ function toRow(raw: RawItem, now: Date): NewItem {
     type: raw.type,
     status: env.requireIngestApproval ? "pending" : "approved",
     title: raw.title.slice(0, 500),
-    url: raw.url,
-    urlHash: urlHash(raw.url),
+    url: safeUrl,
+    urlHash: urlHash(safeUrl),
     summary: raw.summary ?? null,
     source: raw.source,
     sourceSlug: raw.sourceSlug,
@@ -38,8 +59,20 @@ function toRow(raw: RawItem, now: Date): NewItem {
     firstSeen: now,
     publishedAt,
     rankedAt: now,
-    rawJson: (raw.raw ?? null) as NewItem["rawJson"],
+    rawJson: sanitizeRawJson(raw.raw),
   };
+}
+
+/** Runtime trust boundary for adapter output. Adapter TypeScript types cannot
+ * protect persistence from malformed external payloads. Invalid destinations are
+ * dropped before hashing/upsert, while unsafe discussion links are removed. */
+export function prepareIngestRows(rawItems: RawItem[], now: Date): NewItem[] {
+  return dedupeWithinBatch(
+    rawItems.flatMap((item) => {
+      const row = toRow(item, now);
+      return row ? [row] : [];
+    }),
+  );
 }
 
 /**
@@ -61,11 +94,17 @@ async function upsert(rows: NewItem[]): Promise<number> {
       .onConflictDoUpdate({
         target: items.urlHash,
         set: {
-          title: sql`excluded.title`,
-          summary: sql`coalesce(excluded.summary, ${items.summary})`,
+          type: sql`case when excluded.source_weight > ${items.sourceWeight} then excluded.type else ${items.type} end`,
+          title: sql`case when excluded.source_weight > ${items.sourceWeight} then excluded.title else ${items.title} end`,
+          url: sql`case when excluded.source_weight > ${items.sourceWeight} then excluded.url else ${items.url} end`,
+          summary: sql`case when excluded.source_weight > ${items.sourceWeight} then coalesce(excluded.summary, ${items.summary}) else coalesce(${items.summary}, excluded.summary) end`,
+          source: sql`case when excluded.source_weight > ${items.sourceWeight} then excluded.source else ${items.source} end`,
+          sourceSlug: sql`case when excluded.source_weight > ${items.sourceWeight} then excluded.source_slug else ${items.sourceSlug} end`,
+          sourceWeight: sql`greatest(${items.sourceWeight}, excluded.source_weight)`,
+          author: sql`case when excluded.source_weight > ${items.sourceWeight} then coalesce(excluded.author, ${items.author}) else coalesce(${items.author}, excluded.author) end`,
           points: sql`greatest(${items.points}, excluded.points)`,
           publishedAt: sql`coalesce(${items.publishedAt}, excluded.published_at)`,
-          rawJson: sql`excluded.raw_json`,
+          rawJson: sql`case when excluded.source_weight > ${items.sourceWeight} then excluded.raw_json else ${items.rawJson} end`,
         },
       })
       .returning({ id: items.id });
@@ -119,7 +158,7 @@ export async function runIngest(adapters: IngestAdapter[]): Promise<AdapterResul
 
       try {
         const raw = await adapter.fetch();
-        const rows = dedupeWithinBatch(raw.map((item) => toRow(item, now)));
+        const rows = prepareIngestRows(raw, now);
         const written = await upsert(rows);
         await recordSource(adapter, null);
         return { slug: adapter.slug, ok: true, fetched: raw.length, inserted: written };
@@ -138,7 +177,7 @@ export async function runIngest(adapters: IngestAdapter[]): Promise<AdapterResul
  * conflict key twice ("cannot affect row a second time"), and feeds do repeat links
  * within a single response. Collapse in memory first, keeping the higher-weight copy.
  */
-function dedupeWithinBatch(rows: NewItem[]): NewItem[] {
+export function dedupeWithinBatch(rows: NewItem[]): NewItem[] {
   const byHash = new Map<string, NewItem>();
   for (const row of rows) {
     const existing = byHash.get(row.urlHash);
@@ -158,4 +197,10 @@ export function summarise(results: AdapterResult[]) {
     written: results.reduce((n, r) => n + (r.inserted ?? 0), 0),
     results,
   };
+}
+
+/** Cron providers only alert on non-2xx responses. Any adapter failure therefore
+ * needs a failing status even when other adapters produced useful partial data. */
+export function ingestHttpStatus(results: AdapterResult[]): number {
+  return results.some((result) => !result.ok) ? 502 : 200;
 }

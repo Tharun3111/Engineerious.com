@@ -4,11 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Engineerious: a Next.js 15 (App Router) site that ranks AI news/model/open-source items with the
+Engineerious: a Next.js 16 (App Router) site that ranks AI news/model/open-source items with the
 Hacker News formula and publishes Tharun Chowdary's engineering writing, backed by Postgres
-(Neon in prod, node-postgres locally) via Drizzle, deployed on Vercel. Brand: "Proof Loop"
-(IBM Plex Sans + Newsreader, blue/navy palette — see `app/globals.css` and
-`Engineerious-Proof-Loop-Brand-Kit/`, consumed via `components/Logo.tsx`).
+(Neon in prod, node-postgres locally) via Drizzle, deployed on Vercel. The UI uses
+Instrument Sans with restrained Martian Mono display/utility text and a blue/navy palette.
 
 ## Commands
 
@@ -43,12 +42,10 @@ QA workflow and DOM assertions the gate relies on: `gstack/README.md`.
 
 ### Launch gate — the site is deliberately smaller than the codebase
 
-`middleware.ts` closes `/open-source`, `/resources`, `/submit`, and `/pillars/*` to **404 with
-`X-Robots-Tag: noindex, nofollow`** unless `PUBLIC_RESEARCH_ENABLED=true` is set, via
-`lib/public-launch.ts` (`shouldCloseResearchPath` / `DEFERRED_PUBLIC_PREFIXES`). `app/robots.ts`
-disallows the same paths. These routes and their nav/footer links are fully built and tested —
-they are gated, not unfinished. Do not remove the gate or these routes to "simplify"; do not add a
-new top-level route without deciding whether it belongs in `DEFERRED_PUBLIC_PREFIXES`.
+`proxy.ts` always closes `/news`, `/models`, and placeholder `/resources`; it also
+closes `/open-source`, `/submit`, and `/pillars/*` unless
+`PUBLIC_RESEARCH_ENABLED=true`. Every closed response is a 404 with
+`X-Robots-Tag: noindex, nofollow`. Query and sitemap boundaries mirror the route gate.
 `docs/launch-runbook.md` is the source of truth for what's live vs. deferred and the pre-promote
 checklist (`qa:smoke` + `test:e2e` + a 404/noindex check on the deferred paths).
 
@@ -70,9 +67,9 @@ change to the pipeline or the schema.
 
 Three ingested types (`news`, `model`, `oss`) live in one `items` table so the home page can rank
 them together. Ranking is the Hacker News `news.arc` formula,
-`score = (points − 1 + source_weight) / (age_hours + 2)^1.8`, implemented **twice**: `lib/ranking.ts`
-for insert-time scoring and raw SQL in `app/api/cron/rank/route.ts` for the periodic rescore sweep.
-Change both together or the two diverge silently. Dedupe is `sha256(canonical_url)`
+`score = (points − 1 + source_weight) / (age_hours + 2)^1.8`. Shared constants live
+in `lib/ranking.ts` and are consumed by insert-time scoring and the raw SQL sweep.
+Dedupe is `sha256(canonical_url)`
 (`lib/dedupe.ts`); `first_seen` is never overwritten on conflict, which is what stops a re-ingested
 item resurfacing as new.
 
@@ -122,10 +119,10 @@ Playwright suite assert on which one fired. Keep new feed-rendering code emittin
 
 ## Commands cheat sheet for this repo specifically
 
-- `npm run cron:all` hits `/api/cron/{news,models,oss,rank}` against `BASE_URL` (default
+- `npm run cron:all` hits ingestion, rank, daily research, and daily write routes against `BASE_URL` (default
   `localhost:3000`) — the only way to populate feeds in dev, since there's no seed data.
 - `/api/cron/*` and `/api/admin/*` fail closed without `CRON_SECRET` / `ADMIN_PASSWORD` set — see
-  `lib/auth.ts` and `middleware.ts`.
+  `lib/auth.ts` and `proxy.ts`.
 - `.env.example` is the definitive list of env vars and which ones degrade gracefully vs. are
   required; most external integrations (news API, Buffer, beehiiv, Product Hunt, LLM) are optional
   and the corresponding feature returns a clear error/disabled state rather than crashing when
@@ -156,3 +153,13 @@ Key routing rules:
 - Save progress → invoke /context-save
 - Resume context → invoke /context-restore
 - Author a backlog-ready spec/issue → invoke /spec
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
