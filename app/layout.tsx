@@ -104,7 +104,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
         <Footer />
-        <PrivacyAnalytics />
+        {process.env.VERCEL === "1" ? <PrivacyAnalytics /> : null}
       </body>
     </html>
   );
