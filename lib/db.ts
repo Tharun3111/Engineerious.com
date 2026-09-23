@@ -43,15 +43,16 @@ export function getDb(): Database {
 /** A configured deployment database is part of the publication contract. Local
  * authoring may render MDX without Postgres, but CI and every Vercel environment
  * must fail a build instead of caching an outage as an empty publication. */
-export function shouldFailOnDatabaseError({
-  databaseUrl = env.databaseUrl,
-  vercelEnv = process.env.VERCEL_ENV,
-  ci = process.env.CI,
-}: {
+export function shouldFailOnDatabaseError(runtime?: {
   databaseUrl?: string;
   vercelEnv?: string;
   ci?: string;
-} = {}): boolean {
+}): boolean {
+  const { databaseUrl, vercelEnv, ci } = runtime ?? {
+    databaseUrl: env.databaseUrl,
+    vercelEnv: process.env.VERCEL_ENV,
+    ci: process.env.CI,
+  };
   return Boolean(databaseUrl) && (Boolean(vercelEnv) || ci === "true");
 }
 
