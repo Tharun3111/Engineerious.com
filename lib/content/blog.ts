@@ -184,7 +184,7 @@ function rejectMalformedDbPost(
   row: Pick<DbPostMetadataRow, "slug">,
   error: unknown,
 ): null {
-  console.error(
+  console.warn(
     `[blog] ignored malformed DB-native post ${describeDbPost(row)}:`,
     error instanceof Error ? error.message : String(error),
   );
