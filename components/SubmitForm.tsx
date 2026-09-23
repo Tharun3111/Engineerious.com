@@ -47,6 +47,19 @@ export function SubmitForm() {
 
   return (
     <form onSubmit={onSubmit} className="card space-y-4 p-6" data-testid="submit-form">
+      <div
+        aria-hidden="true"
+        className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden"
+      >
+        <label htmlFor="submit-company">Company</label>
+        <input
+          id="submit-company"
+          name="company"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+        />
+      </div>
       <div>
         <label htmlFor="submit-url" className={label}>
           URL

@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { items } from "@/db/schema";
-import { ADMIN_REALM, authorizeAdmin } from "@/lib/auth";
+import { authorizeAdmin } from "@/lib/auth";
 import {
   CURATED_AI_CATEGORIES,
   CURATED_AI_TOPIC_SLUGS,
@@ -16,6 +16,11 @@ import {
   curatedAiSourceVersion,
 } from "@/lib/curated-ai-source-version";
 import { getDb } from "@/lib/db";
+import {
+  adminUnauthorizedResponse,
+  JSON_BODY_LIMITS,
+  readBoundedJsonMutation,
+} from "@/lib/request-safety";
 import { AUTHOR_NAME } from "@/lib/site";
 
 export const runtime = "nodejs";
@@ -55,13 +60,6 @@ const bodySchema = z.discriminatedUnion("action", [
     .strict(),
 ]);
 
-function unauthorized() {
-  return NextResponse.json(
-    { error: "Unauthorized" },
-    { status: 401, headers: { "WWW-Authenticate": ADMIN_REALM } },
-  );
-}
-
 function revalidateCuratedSurfaces(): void {
   // Editorial removal must not serve a stale snapshot under SWR semantics.
   revalidateTag(CURATED_AI_CACHE_TAG, { expire: 0 });
@@ -86,9 +84,12 @@ function iso(value: Date): string {
 
 /** Explicit human curation boundary. Raw ingestion fields are copied server-side. */
 export async function POST(request: Request) {
-  if (!authorizeAdmin(request)) return unauthorized();
+  if (!authorizeAdmin(request)) return adminUnauthorizedResponse();
 
-  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  const body = await readBoundedJsonMutation(request, JSON_BODY_LIMITS.admin);
+  if (!body.ok) return body.response;
+
+  const parsed = bodySchema.safeParse(body.value);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? "Invalid curation request." },

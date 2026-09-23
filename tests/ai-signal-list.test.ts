@@ -2,7 +2,12 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { AiSignalList, signalSourceRole } from "@/components/AiSignalList";
+import {
+  AiSignalList,
+  buildSignalRankIndex,
+  signalSourceRole,
+  type SignalRankIndex,
+} from "@/components/AiSignalList";
 import type { CuratedAiSignal } from "@/lib/curated-ai";
 
 function signal(overrides: Partial<CuratedAiSignal> = {}): CuratedAiSignal {
@@ -29,8 +34,14 @@ function signal(overrides: Partial<CuratedAiSignal> = {}): CuratedAiSignal {
   };
 }
 
-function render(signals: readonly CuratedAiSignal[], error: string | null = null): string {
-  return renderToStaticMarkup(createElement(AiSignalList, { signals, error }));
+function render(
+  signals: readonly CuratedAiSignal[],
+  error: string | null = null,
+  rankByItemId?: SignalRankIndex,
+): string {
+  return renderToStaticMarkup(
+    createElement(AiSignalList, { signals, error, rankByItemId }),
+  );
 }
 
 describe("AI signal list", () => {
@@ -40,6 +51,7 @@ describe("AI signal list", () => {
     expect(html).toContain('id="signal-42"');
     expect(html).toContain('data-feed-state="ok"');
     expect(html).toContain("Live rank");
+    expect(html).toContain('aria-label="Live rank 1"');
     expect(html).toContain("score 0.125");
     expect(html).toContain("Reported");
     expect(html).toContain("Primary source");
@@ -49,6 +61,19 @@ describe("AI signal list", () => {
     expect(html).toContain('target="_blank"');
     expect(html).not.toContain("/news/42");
     expect(html).not.toContain("/models/42");
+  });
+
+  it("retains canonical corpus rank when rendering a filtered subset", () => {
+    const fullCorpus = [
+      signal({ itemId: 7 }),
+      signal({ itemId: 8 }),
+      signal({ itemId: 42 }),
+    ];
+    const html = render([fullCorpus[2]], null, buildSignalRankIndex(fullCorpus));
+
+    expect(html).toContain('id="signal-42"');
+    expect(html).toContain('aria-label="Live rank 3"');
+    expect(html).not.toContain('aria-label="Live rank 1"');
   });
 
   it("classifies only source roles that can be derived honestly", () => {

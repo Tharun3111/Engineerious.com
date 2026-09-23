@@ -1,12 +1,13 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CuratedAiSignal } from "@/lib/curated-ai";
 
 const mocks = vi.hoisted(() => ({
   getPublishedWritingPosts: vi.fn(),
   getCuratedAiCorpus: vi.fn(),
+  getPublishedHandbookEntries: vi.fn(),
 }));
 
 vi.mock("@/lib/content/blog", () => ({
@@ -15,6 +16,10 @@ vi.mock("@/lib/content/blog", () => ({
 
 vi.mock("@/lib/curated-ai-queries", () => ({
   getCuratedAiCorpus: mocks.getCuratedAiCorpus,
+}));
+
+vi.mock("@/lib/handbook", () => ({
+  getPublishedHandbookEntries: mocks.getPublishedHandbookEntries,
 }));
 
 import AiDeskPage, { generateMetadata as generateAiMetadata } from "@/app/ai/page";
@@ -45,9 +50,36 @@ function signal(itemId: number, topicSlugs: CuratedAiSignal["topicSlugs"]): Cura
   };
 }
 
+function handbook(topicSlugs: string[] = []) {
+  return {
+    kind: "concept" as const,
+    routeKind: "concepts" as const,
+    slug: "hybrid-search",
+    title: "Hybrid search",
+    summary: "A reviewed reference for lexical and semantic retrieval.",
+    body: "## Definition\n\nA source-linked explanation.",
+    myTake: "Use both channels only when each closes a measured gap.",
+    tags: ["retrieval"],
+    topicSlugs,
+    sources: [{ label: "Primary docs", url: "https://example.com/search" }],
+    draft: false,
+    authenticityStatus: "verified" as const,
+    origin: "human" as const,
+    publishedAt: new Date("2026-08-20T10:00:00.000Z"),
+    updatedAt: new Date("2026-08-24T10:00:00.000Z"),
+    reviewedBy: "Tharun",
+    reviewedAt: new Date("2026-08-24T11:00:00.000Z"),
+    readingMinutes: 4,
+  };
+}
+
 async function renderPage(page: () => Promise<React.ReactNode>): Promise<string> {
   return renderToStaticMarkup(createElement("div", null, await page()));
 }
+
+beforeEach(() => {
+  mocks.getPublishedHandbookEntries.mockReturnValue([]);
+});
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -66,6 +98,7 @@ describe("public AI desk", () => {
     expect(html).toContain("Raw candidates remain off this page");
     expect(html).not.toContain('href="/topics/');
     expect(html).not.toContain("Engineering lenses");
+    expect(html).not.toContain("Published handbook");
   });
 
   it("indexes reviewed signal and links only a topic that reaches its threshold", async () => {
@@ -90,6 +123,23 @@ describe("public AI desk", () => {
     const html = await renderPage(AiDeskPage);
     expect(html).toContain('data-feed-state="unavailable"');
     expect(html).toContain("Private or raw feed rows are not being shown as a fallback");
+  });
+
+  it("indexes a real handbook-only desk and renders no empty collections", async () => {
+    mocks.getPublishedWritingPosts.mockResolvedValue([]);
+    mocks.getCuratedAiCorpus.mockResolvedValue({ signals: [], error: null });
+    mocks.getPublishedHandbookEntries.mockReturnValue([handbook()]);
+
+    const metadata = await generateAiMetadata();
+    const html = await renderPage(AiDeskPage);
+
+    expect(metadata.robots).toEqual({ index: true, follow: true });
+    expect(html).toContain("Published handbook");
+    expect(html).toContain("Concepts");
+    expect(html).toContain('href="/ai/concepts/hybrid-search"');
+    expect(html).not.toContain("Frameworks");
+    expect(html).not.toContain("Model notes");
+    expect(html).not.toContain('href="/models/');
   });
 });
 
@@ -152,6 +202,12 @@ describe("active topic route", () => {
     });
 
     const aiHtml = await renderPage(AiDeskPage);
+    const requestedHtml = await renderPage(() =>
+      AiDeskPage({ searchParams: Promise.resolve({ signal: "101" }) }),
+    );
+    const missingHtml = await renderPage(() =>
+      AiDeskPage({ searchParams: Promise.resolve({ signal: "999" }) }),
+    );
     const topicHtml = await renderPage(() =>
       TopicPage({ params: Promise.resolve({ slug: "agents" }) }),
     );
@@ -159,7 +215,33 @@ describe("active topic route", () => {
     expect(aiHtml).toContain('href="/topics/agents"');
     expect(aiHtml).toContain('id="signal-100"');
     expect(aiHtml).not.toContain('id="signal-101"');
+    expect(requestedHtml).toContain('id="signal-101"');
+    expect(requestedHtml).toContain("100 ranked + requested snapshot");
+    expect(requestedHtml).toMatch(
+      /id="signal-101"[\s\S]*?aria-label="Live rank 101"/,
+    );
+    expect(missingHtml).not.toContain('id="signal-101"');
     expect(topicHtml).toContain('id="signal-101"');
     expect(topicHtml).toContain('id="signal-103"');
+    expect(topicHtml).toMatch(/id="signal-101"[\s\S]*?aria-label="Live rank 101"/);
+    expect(topicHtml).toMatch(/id="signal-103"[\s\S]*?aria-label="Live rank 103"/);
+  });
+
+  it("opens a topic for one explicitly tagged handbook entry and renders its Learn section", async () => {
+    mocks.getPublishedWritingPosts.mockResolvedValue([]);
+    mocks.getCuratedAiCorpus.mockResolvedValue({ signals: [], error: null });
+    mocks.getPublishedHandbookEntries.mockReturnValue([handbook(["rag"])]);
+
+    const metadata = await generateTopicMetadata({
+      params: Promise.resolve({ slug: "rag" }),
+    });
+    const html = await renderPage(() =>
+      TopicPage({ params: Promise.resolve({ slug: "rag" }) }),
+    );
+
+    expect(metadata.robots).toEqual({ index: true, follow: true });
+    expect(html).toContain("Learn from the handbook");
+    expect(html).toContain('href="/ai/concepts/hybrid-search"');
+    expect(html).not.toContain("What changed");
   });
 });

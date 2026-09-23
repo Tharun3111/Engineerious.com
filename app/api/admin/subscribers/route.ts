@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { ADMIN_REALM, authorizeAdmin } from "@/lib/auth";
+import { authorizeAdmin } from "@/lib/auth";
+import {
+  adminUnauthorizedResponse,
+  JSON_BODY_LIMITS,
+  readBoundedJsonMutation,
+} from "@/lib/request-safety";
 import { retrySubscriberSync } from "@/lib/subscriber-delivery";
 
 export const runtime = "nodejs";
@@ -15,48 +20,13 @@ const bodySchema = z
   })
   .strict();
 
-function mutationRequestError(request: Request): NextResponse | null {
-  const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
-  if (contentType !== "application/json") {
-    return NextResponse.json(
-      { error: "Content-Type must be application/json." },
-      { status: 415 },
-    );
-  }
-
-  if (request.headers.get("sec-fetch-site")?.trim().toLowerCase() === "cross-site") {
-    return NextResponse.json({ error: "Cross-site admin mutations are forbidden." }, { status: 403 });
-  }
-
-  const origin = request.headers.get("origin");
-  if (origin) {
-    let requestOriginMatches = false;
-    try {
-      requestOriginMatches = new URL(origin).origin === new URL(request.url).origin;
-    } catch {
-      requestOriginMatches = false;
-    }
-    if (!requestOriginMatches) {
-      return NextResponse.json(
-        { error: "Foreign-origin admin mutations are forbidden." },
-        { status: 403 },
-      );
-    }
-  }
-  return null;
-}
-
 export async function POST(request: Request) {
-  if (!authorizeAdmin(request)) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401, headers: { "www-authenticate": ADMIN_REALM } },
-    );
-  }
-  const unsafeRequest = mutationRequestError(request);
-  if (unsafeRequest) return unsafeRequest;
+  if (!authorizeAdmin(request)) return adminUnauthorizedResponse();
 
-  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  const body = await readBoundedJsonMutation(request, JSON_BODY_LIMITS.admin);
+  if (!body.ok) return body.response;
+
+  const parsed = bodySchema.safeParse(body.value);
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Choose one captured subscriber to retry." },

@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { items, sources, type NewItem } from "@/db/schema";
 import { getDb } from "@/lib/db";
 import { urlHash } from "@/lib/dedupe";
+import { isHttpUrl } from "@/lib/editorial-safety";
 import { env } from "@/lib/env";
 import { computeScore } from "@/lib/ranking";
 import type { AdapterResult, IngestAdapter, RawItem } from "@/lib/adapters/types";
@@ -15,7 +16,27 @@ function chunk<T>(list: T[], size: number): T[][] {
   return out;
 }
 
-function toRow(raw: RawItem, now: Date): NewItem {
+function sanitizeRawJson(raw: unknown): NewItem["rawJson"] {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return (raw ?? null) as NewItem["rawJson"];
+  }
+
+  const sanitized = { ...(raw as Record<string, unknown>) };
+  if ("discussion" in sanitized) {
+    if (typeof sanitized.discussion !== "string" || !isHttpUrl(sanitized.discussion)) {
+      delete sanitized.discussion;
+    } else {
+      sanitized.discussion = sanitized.discussion.trim();
+    }
+  }
+  return sanitized as NewItem["rawJson"];
+}
+
+function toRow(raw: RawItem, now: Date): NewItem | null {
+  if (typeof raw.url !== "string") return null;
+  const safeUrl = raw.url.trim();
+  if (!isHttpUrl(safeUrl)) return null;
+
   const publishedAt = raw.publishedAt ?? null;
   const points = raw.points ?? 0;
 
@@ -23,8 +44,8 @@ function toRow(raw: RawItem, now: Date): NewItem {
     type: raw.type,
     status: env.requireIngestApproval ? "pending" : "approved",
     title: raw.title.slice(0, 500),
-    url: raw.url,
-    urlHash: urlHash(raw.url),
+    url: safeUrl,
+    urlHash: urlHash(safeUrl),
     summary: raw.summary ?? null,
     source: raw.source,
     sourceSlug: raw.sourceSlug,
@@ -38,8 +59,20 @@ function toRow(raw: RawItem, now: Date): NewItem {
     firstSeen: now,
     publishedAt,
     rankedAt: now,
-    rawJson: (raw.raw ?? null) as NewItem["rawJson"],
+    rawJson: sanitizeRawJson(raw.raw),
   };
+}
+
+/** Runtime trust boundary for adapter output. Adapter TypeScript types cannot
+ * protect persistence from malformed external payloads. Invalid destinations are
+ * dropped before hashing/upsert, while unsafe discussion links are removed. */
+export function prepareIngestRows(rawItems: RawItem[], now: Date): NewItem[] {
+  return dedupeWithinBatch(
+    rawItems.flatMap((item) => {
+      const row = toRow(item, now);
+      return row ? [row] : [];
+    }),
+  );
 }
 
 /**
@@ -125,7 +158,7 @@ export async function runIngest(adapters: IngestAdapter[]): Promise<AdapterResul
 
       try {
         const raw = await adapter.fetch();
-        const rows = dedupeWithinBatch(raw.map((item) => toRow(item, now)));
+        const rows = prepareIngestRows(raw, now);
         const written = await upsert(rows);
         await recordSource(adapter, null);
         return { slug: adapter.slug, ok: true, fetched: raw.length, inserted: written };

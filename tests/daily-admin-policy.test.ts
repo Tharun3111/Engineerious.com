@@ -7,6 +7,7 @@ import {
 } from "@/lib/daily-brief";
 
 const mocks = vi.hoisted(() => ({
+  authorizeAdmin: vi.fn(),
   getDb: vi.fn(),
   reviewDailyBrief: vi.fn(),
   revalidatePath: vi.fn(),
@@ -14,6 +15,10 @@ const mocks = vi.hoisted(() => ({
   submitUrls: vi.fn(),
 }));
 
+vi.mock("@/lib/auth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/auth")>();
+  return { ...actual, authorizeAdmin: mocks.authorizeAdmin };
+});
 vi.mock("@/lib/db", () => ({ getDb: mocks.getDb }));
 vi.mock("next/cache", () => ({
   revalidatePath: mocks.revalidatePath,
@@ -130,17 +135,28 @@ function fakeDb(input: {
 function request(body: unknown): Request {
   return new Request("http://localhost/api/admin/digests", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", authorization: "Basic test" },
     body: JSON.stringify(body),
   });
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.authorizeAdmin.mockReturnValue(true);
   mocks.submitUrls.mockResolvedValue(undefined);
 });
 
 describe("Daily admin lifecycle", () => {
+  it("authenticates at the route before parsing or database work", async () => {
+    mocks.authorizeAdmin.mockReturnValue(false);
+
+    const response = await POST(request({ id: 7, action: "reject" }));
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("www-authenticate")).toContain("Engineerious admin");
+    expect(mocks.getDb).not.toHaveBeenCalled();
+  });
+
   it("invalidates factual review and My Take confirmation after a factual edit", async () => {
     const current = dailyDraft();
     const next = dailyDraft({ title: "AI Daily Brief — the reviewed edit" });

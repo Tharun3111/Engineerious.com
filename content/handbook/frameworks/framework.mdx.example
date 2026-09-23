@@ -1,0 +1,62 @@
+---
+schemaVersion: 1
+kind: framework
+title: "<specific framework name>"
+summary: "<plain-language summary of the decision or implementation framework>"
+publishedAt: "<YYYY-MM-DD>"
+updatedAt: "<YYYY-MM-DD>"
+draft: true
+origin: human
+sourceStatus: primary
+testedStatus: not_tested
+authenticityStatus: pending
+reviewedBy: "<human reviewer>"
+reviewedAt: "<ISO 8601 timestamp after the final edit>"
+myTake: >-
+  <the author's own analysis; distinguish judgment from sourced fact>
+tags:
+  - "<descriptive tag>"
+topicSlugs: []
+sources:
+  - label: "<specific documentation, repository, or paper title>"
+    publisher: "<publisher or organization>"
+    url: "<https://source-url>"
+    publishedAt: "<YYYY-MM-DD if known>"
+    accessedAt: "<YYYY-MM-DD>"
+---
+
+## What is it
+
+<Define the framework and its scope.>
+
+## What problem does it solve
+
+<Name the engineering problem it is intended to solve.>
+
+## When to use it
+
+<State the conditions that favor this framework.>
+
+## When to avoid it
+
+<State the conditions that should rule it out.>
+
+## Alternatives
+
+<Compare credible alternatives without manufacturing a winner.>
+
+## Architecture
+
+<Explain the verified components, boundaries, and data flow.>
+
+## Example
+
+<Give a sourced or clearly labeled illustrative example.>
+
+## Pros
+
+<List evidence-backed advantages.>
+
+## Cons
+
+<List evidence-backed limitations and operational costs.>

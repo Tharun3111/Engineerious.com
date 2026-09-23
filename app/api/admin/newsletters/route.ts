@@ -2,7 +2,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { digests } from "@/db/schema";
-import { ADMIN_REALM, authorizeAdmin } from "@/lib/auth";
+import { authorizeAdmin } from "@/lib/auth";
 import {
   factualContentHash,
   myTakeContentHash,
@@ -32,6 +32,11 @@ import {
 } from "@/lib/resend";
 import { AUTHOR_NAME } from "@/lib/site";
 import { countActiveUnsyncedSubscribers } from "@/lib/subscriber-queries";
+import {
+  adminUnauthorizedResponse,
+  JSON_BODY_LIMITS,
+  readBoundedJsonMutation,
+} from "@/lib/request-safety";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,38 +45,6 @@ export const maxDuration = 60;
 type DigestRow = typeof digests.$inferSelect;
 
 class NewsletterConfigurationError extends Error {}
-
-function unauthorized() {
-  return NextResponse.json(
-    { error: "Unauthorized" },
-    { status: 401, headers: { "WWW-Authenticate": ADMIN_REALM } },
-  );
-}
-
-function validateMutationRequest(request: Request): NextResponse | null {
-  const mediaType = (request.headers.get("content-type") ?? "")
-    .split(";", 1)[0]
-    .trim()
-    .toLowerCase();
-  if (mediaType !== "application/json") {
-    return NextResponse.json({ error: "Content-Type must be application/json." }, { status: 415 });
-  }
-
-  if (request.headers.get("sec-fetch-site")?.toLowerCase() === "cross-site") {
-    return NextResponse.json({ error: "Cross-site admin mutations are not allowed." }, { status: 403 });
-  }
-  const origin = request.headers.get("origin");
-  if (origin) {
-    try {
-      if (new URL(origin).origin !== new URL(request.url).origin) {
-        return NextResponse.json({ error: "Cross-origin admin mutations are not allowed." }, { status: 403 });
-      }
-    } catch {
-      return NextResponse.json({ error: "The request Origin is invalid." }, { status: 403 });
-    }
-  }
-  return null;
-}
 
 function conflict(error: string, currentVersion?: number) {
   return NextResponse.json(
@@ -693,11 +666,12 @@ async function reconcileNewsletter(db: ReturnType<typeof getDb>, digest: DigestR
 }
 
 export async function POST(request: Request) {
-  if (!authorizeAdmin(request)) return unauthorized();
-  const unsafeRequest = validateMutationRequest(request);
-  if (unsafeRequest) return unsafeRequest;
+  if (!authorizeAdmin(request)) return adminUnauthorizedResponse();
 
-  const parsed = newsletterActionSchema.safeParse(await request.json().catch(() => null));
+  const body = await readBoundedJsonMutation(request, JSON_BODY_LIMITS.admin);
+  if (!body.ok) return body.response;
+
+  const parsed = newsletterActionSchema.safeParse(body.value);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? "Invalid newsletter action." },

@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import type { NewItem } from "@/db/schema";
 import type { AdapterResult } from "@/lib/adapters/types";
-import { dedupeWithinBatch, ingestHttpStatus, summarise } from "@/lib/ingest";
+import {
+  dedupeWithinBatch,
+  ingestHttpStatus,
+  prepareIngestRows,
+  summarise,
+} from "@/lib/ingest";
 
 function row(urlHash: string, sourceWeight: number, source: string): NewItem {
   return {
@@ -44,5 +49,43 @@ describe("ingestion policy", () => {
 
   it("returns success only when every configured adapter succeeds", () => {
     expect(ingestHttpStatus([{ slug: "primary", ok: true, fetched: 1 }])).toBe(200);
+  });
+
+  it("drops non-HTTP adapter destinations before persistence", () => {
+    const rows = prepareIngestRows(
+      [
+        {
+          type: "news",
+          title: "Unsafe external payload",
+          url: "data:text/html,payload",
+          source: "External",
+          sourceSlug: "external",
+          sourceWeight: 1,
+        },
+      ],
+      new Date("2026-08-25T00:00:00Z"),
+    );
+
+    expect(rows).toEqual([]);
+  });
+
+  it("keeps a safe item but strips an unsafe discussion destination", () => {
+    const [result] = prepareIngestRows(
+      [
+        {
+          type: "news",
+          title: "Safe source",
+          url: " https://example.com/release ",
+          source: "External",
+          sourceSlug: "external",
+          sourceWeight: 1,
+          raw: { discussion: "javascript:alert(1)", externalId: "abc" },
+        },
+      ],
+      new Date("2026-08-25T00:00:00Z"),
+    );
+
+    expect(result?.url).toBe("https://example.com/release");
+    expect(result?.rawJson).toEqual({ externalId: "abc" });
   });
 });

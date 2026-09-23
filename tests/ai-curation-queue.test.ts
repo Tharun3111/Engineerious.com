@@ -56,6 +56,22 @@ describe("AI curation queue", () => {
     expect(screen.getByRole("button", { name: "Publish curated snapshot" })).toBeTruthy();
   });
 
+  it("keeps unsafe legacy source URLs inert and unpublishable", () => {
+    render(
+      React.createElement(AiCurationQueue, {
+        items: [record({ url: "data:text/html,payload" })],
+      }),
+    );
+
+    expect(screen.queryByRole("link", { name: /Raw factual title/ })).toBeNull();
+    expect(screen.getByText(/unsafe\/invalid URL/)).toBeTruthy();
+    expect(screen.getByText(/Reject or repair this source/)).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: "Publish curated snapshot" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+  });
+
   it("shows a curated copy as immutable with an explicit unpublish action", () => {
     const signal = {
       schemaVersion: 1 as const,

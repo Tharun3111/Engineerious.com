@@ -45,7 +45,7 @@ added later without changing the formula.
 ## Quick start
 
 ```bash
-cp .env.example .env.local     # fill in DATABASE_URL, CRON_SECRET, ADMIN_PASSWORD
+cp .env.example .env.local     # fill required database, auth, and rate-limit secrets
 npm install
 npm run db:generate            # generate SQL from db/schema.ts
 npm run db:migrate             # apply to Neon
@@ -73,6 +73,7 @@ verified.
 | `DATABASE_URL` | Neon pooled connection string |
 | `CRON_SECRET` | Authenticates `/api/cron/*`. Routes **fail closed** without it |
 | `ADMIN_PASSWORD` | HTTP Basic for `/admin`. `/admin` returns 503 without it — never open |
+| `PUBLIC_MUTATION_RATE_LIMIT_SECRET` | Stable 32-128-byte hex HMAC key for public POST limits. Generate with `openssl rand -hex 32`; production mutations fail closed without it |
 | `NEXT_PUBLIC_SITE_URL` | Canonical origin for metadata, sitemap, RSS |
 
 **Optional** — every one of these degrades gracefully; the adapter or feature reports itself
@@ -193,7 +194,10 @@ outbox in `/admin`:
 The public signup path normalizes addresses and writes the Postgres capture ledger before trying
 Resend. Every accepted request returns the same generic receipt, whether the address is new,
 already synced, pending repair, or opted out at the provider; public responses never reveal that
-state. Known provider contacts are not mutated by duplicate public submissions. `/admin` exposes a
+state. Before capture, one Postgres function locks and checks both a per-client and
+per-normalized-address fixed-window dimension, then increments both or neither. Only keyed HMAC
+digests reach that counter table; raw client addresses and signup addresses do not. Known provider
+contacts are not mutated by duplicate public submissions. `/admin` exposes a
 bounded, one-contact retry queue only for rows that never received a provider contact ID. The site
 does not reactivate an opted-out address without a future email-ownership confirmation flow.
 
@@ -244,7 +248,7 @@ app/
   api/admin/{curated-ai,digests,items,newsletters,repurpose,subscribers,submissions}/
 components/                   public desk, Daily Brief, feed, navigation, forms, and admin editors
 lib/
-  daily-{brief,publish,queries}.ts curated-ai*.ts newsletter*.ts subscriber*.ts topics.ts search-index.ts ranking.ts dedupe.ts ingest.ts queries.ts auth.ts llm.ts env.ts
+  daily-{brief,publish,queries}.ts curated-ai*.ts newsletter*.ts subscriber*.ts public-rate-limit.ts topics.ts search-index.ts ranking.ts dedupe.ts ingest.ts queries.ts auth.ts llm.ts env.ts
   adapters/                   one file per source, all behind IngestAdapter
   content/                    MDX loader (Zod-validated frontmatter) + DB mirror
   repurpose/                  reviewed, copy-ready draft generation

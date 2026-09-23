@@ -4,6 +4,9 @@ export const SEARCH_ITEM_KINDS = [
   "signal",
   "topic",
   "project",
+  "concept",
+  "framework",
+  "model",
 ] as const;
 
 export type SearchItemKind = (typeof SEARCH_ITEM_KINDS)[number];
@@ -31,6 +34,11 @@ export type SearchDailySource = SearchSourceBase & { date: string };
 export type SearchSignalSource = SearchSourceBase & { itemId: number };
 export type SearchTopicSource = SearchSourceBase & { slug: string };
 export type SearchProjectSource = SearchSourceBase & { slug: string };
+export type SearchHandbookSource = SearchSourceBase & {
+  kind: "concept" | "framework" | "model";
+  routeKind: "concepts" | "frameworks" | "models";
+  slug: string;
+};
 
 export type PublicSearchSources = {
   writing: readonly SearchWritingSource[];
@@ -38,6 +46,7 @@ export type PublicSearchSources = {
   signals: readonly SearchSignalSource[];
   topics: readonly SearchTopicSource[];
   projects: readonly SearchProjectSource[];
+  handbook: readonly SearchHandbookSource[];
 };
 
 function cleanKeywords(keywords: readonly string[]): string[] {
@@ -85,13 +94,26 @@ export function buildSearchIndex(sources: PublicSearchSources): SearchItem[] {
       item("daily", source.date, `/daily/${source.date}`, source),
     ),
     ...sources.signals.map((source) =>
-      item("signal", String(source.itemId), `/ai#signal-${source.itemId}`, source),
+      item(
+        "signal",
+        String(source.itemId),
+        `/ai?signal=${source.itemId}#signal-${source.itemId}`,
+        source,
+      ),
     ),
     ...sources.topics.map((source) =>
       item("topic", source.slug, `/topics/${source.slug}`, source),
     ),
     ...sources.projects.map((source) =>
       item("project", source.slug, `/projects/${source.slug}`, source),
+    ),
+    ...sources.handbook.map((source) =>
+      item(
+        source.kind,
+        source.slug,
+        `/ai/${source.routeKind}/${source.slug}`,
+        source,
+      ),
     ),
   ];
 

@@ -9,6 +9,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   serial,
   text,
   timestamp,
@@ -391,6 +392,50 @@ export const subscribers = pgTable(
   ],
 );
 
+/**
+ * Privacy-preserving fixed-window counters for unauthenticated mutation routes.
+ * `identityHash` is always an HMAC-SHA256 digest produced by
+ * lib/public-rate-limit.ts; raw client addresses and email addresses must never
+ * enter this table. The composite key identifies a fixed window; migration 0010's
+ * database function locks every requested key in deterministic order and updates
+ * all dimensions together or none.
+ */
+export const publicMutationRateLimits = pgTable(
+  "public_mutation_rate_limits",
+  {
+    scope: text("scope").notNull(),
+    identityHash: text("identity_hash").notNull(),
+    windowStartedAt: timestamp("window_started_at", { withTimezone: true }).notNull(),
+    requestCount: integer("request_count").notNull(),
+    requestLimit: integer("request_limit").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({
+      name: "public_mutation_rate_limits_pkey",
+      columns: [t.scope, t.identityHash, t.windowStartedAt],
+    }),
+    index("public_mutation_rate_limits_expires_idx").on(t.expiresAt),
+    check(
+      "public_mutation_rate_limits_scope_check",
+      sql`${t.scope} in ('subscribe_client', 'subscribe_email', 'submit_client')`,
+    ),
+    check(
+      "public_mutation_rate_limits_identity_hash_check",
+      sql`char_length(${t.identityHash}) = 64 and ${t.identityHash} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "public_mutation_rate_limits_count_check",
+      sql`${t.requestCount} >= 1 and ${t.requestLimit} >= 1 and ${t.requestCount} <= ${t.requestLimit}`,
+    ),
+    check(
+      "public_mutation_rate_limits_window_check",
+      sql`${t.expiresAt} > ${t.windowStartedAt}`,
+    ),
+  ],
+);
+
 export type Item = typeof items.$inferSelect;
 export type NewItem = typeof items.$inferInsert;
 export type Source = typeof sources.$inferSelect;
@@ -401,6 +446,7 @@ export type Digest = typeof digests.$inferSelect;
 export type ResearchRun = typeof researchRuns.$inferSelect;
 export type StockQuote = typeof stockQuotes.$inferSelect;
 export type Subscriber = typeof subscribers.$inferSelect;
+export type PublicMutationRateLimit = typeof publicMutationRateLimits.$inferSelect;
 export type ItemType = (typeof itemTypeEnum.enumValues)[number];
 export type Platform = (typeof platformEnum.enumValues)[number];
 export type DigestStatus = (typeof digestStatusEnum.enumValues)[number];

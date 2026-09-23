@@ -38,6 +38,15 @@ const results: SearchItem[] = [
     label: "Topic hub",
     keywords: ["embeddings", "retrieval"],
   },
+  {
+    id: "concept:hybrid-search",
+    kind: "concept",
+    href: "/ai/concepts/hybrid-search",
+    title: "Hybrid search",
+    description: "A reviewed handbook reference.",
+    label: "Handbook concept",
+    keywords: ["ranking"],
+  },
 ];
 
 function successfulFetch() {
@@ -83,7 +92,21 @@ describe("CommandPalette", () => {
 
     expect(screen.getByText("RAG systems")).toBeTruthy();
     expect(screen.queryByText("Evals that hold up")).toBeNull();
-    expect(screen.getByText("1 of 3")).toBeTruthy();
+    expect(screen.getByText("1 of 4")).toBeTruthy();
+  });
+
+  it("labels and opens a handbook result at its real AI detail route", async () => {
+    vi.stubGlobal("fetch", successfulFetch());
+    render(React.createElement(CommandPalette));
+    fireEvent.click(screen.getByRole("button", { name: "Search Engineerious" }));
+
+    const title = await screen.findByText("Hybrid search");
+    expect(screen.getByText("Concept · Handbook concept")).toBeTruthy();
+    const result = title.closest("button");
+    if (!result) throw new Error("Handbook search result is not clickable");
+    fireEvent.click(result);
+
+    expect(router.push).toHaveBeenCalledWith("/ai/concepts/hybrid-search");
   });
 
   it("supports arrows and Enter while keeping focus trapped and restorable", async () => {

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { NewsletterCTA } from "@/components/NewsletterCTA";
 import { hostname } from "@/lib/dedupe";
+import { isHttpUrl } from "@/lib/editorial-safety";
 import { getItem } from "@/lib/queries";
 import { computeScore, ageHours } from "@/lib/ranking";
 import { sectionFor } from "@/lib/sections";
@@ -24,7 +25,9 @@ export async function ItemDetail({ id, expectedType }: { id: string; expectedTyp
 
   const section = sectionFor(item.type);
   const raw = (item.rawJson ?? {}) as Record<string, unknown>;
-  const discussion = typeof raw.discussion === "string" ? raw.discussion : null;
+  const safeItemUrl = isHttpUrl(item.url);
+  const discussion =
+    typeof raw.discussion === "string" && isHttpUrl(raw.discussion) ? raw.discussion : null;
   const age = ageHours(item);
   const liveScore = computeScore({
     points: item.points,
@@ -62,14 +65,18 @@ export async function ItemDetail({ id, expectedType }: { id: string; expectedTyp
       )}
 
       <div className="flex flex-wrap gap-3">
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer nofollow"
-          className="btn btn-primary"
-        >
-          Open on {hostname(item.url) || "source"} ↗
-        </a>
+        {safeItemUrl ? (
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            className="btn btn-primary"
+          >
+            Open on {hostname(item.url) || "source"} ↗
+          </a>
+        ) : (
+          <p className="text-[13px] text-muted">The stored source URL is unavailable.</p>
+        )}
         {discussion && (
           <a href={discussion} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
             Hacker News discussion ↗

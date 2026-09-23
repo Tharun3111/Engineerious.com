@@ -6,6 +6,8 @@ import { SectionTabs } from "@/components/SectionTabs";
 import { StatTiles } from "@/components/StatTiles";
 import { getPublishedWritingPosts } from "@/lib/content/blog";
 
+export const revalidate = 300;
+
 export const metadata: Metadata = {
   title: "Writing",
   description:

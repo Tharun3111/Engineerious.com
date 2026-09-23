@@ -1,8 +1,10 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { desc } from "drizzle-orm";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 import matter from "gray-matter";
+import { cache } from "react";
+import { z } from "zod";
 
 import { posts as postsTable, type DiagramSpec } from "@/db/schema";
 import { getDb, shouldFailOnDatabaseError } from "@/lib/db";
@@ -12,7 +14,7 @@ import {
   parseFrontmatter,
   type Frontmatter,
 } from "@/lib/content/frontmatter";
-import type { PillarSlug } from "@/lib/pillars";
+import { isHttpUrl } from "@/lib/editorial-safety";
 
 /**
  * Two sources of truth, merged. Human-written posts are MDX-on-disk (source of
@@ -57,13 +59,13 @@ function readingMinutes(body: string): number {
   return Math.max(1, Math.round(words / 225));
 }
 
-function listMdxFiles(): string[] {
+const listMdxFiles = cache(function listMdxFiles(): string[] {
   try {
     return readdirSync(CONTENT_DIR).filter((f) => f.endsWith(".mdx"));
   } catch {
     return [];
   }
-}
+});
 
 function loadMdx(file: string): BlogPost {
   const slug = file.replace(/\.mdx$/, "");
@@ -95,8 +97,201 @@ function loadMdx(file: string): BlogPost {
   return { ...parsed, slug, body: content, readingMinutes: readingMinutes(content), source: "mdx" };
 }
 
-function getAllMdxPosts(): BlogPost[] {
+const getAllMdxPosts = cache(function getAllMdxPosts(): BlogPost[] {
   return listMdxFiles().map(loadMdx);
+});
+
+type DbPostRow = typeof postsTable.$inferSelect;
+
+const dbPostMetadataSelection = {
+  slug: postsTable.slug,
+  title: postsTable.title,
+  dek: postsTable.dek,
+  pillar: postsTable.pillar,
+  canonical: postsTable.canonical,
+  publishedAt: postsTable.publishedAt,
+  draft: postsTable.draft,
+  format: postsTable.format,
+  origin: postsTable.origin,
+  sourceStatus: postsTable.sourceStatus,
+  testedStatus: postsTable.testedStatus,
+  authenticityStatus: postsTable.authenticityStatus,
+  tags: postsTable.tags,
+  reviewedBy: postsTable.reviewedBy,
+  reviewedAt: postsTable.reviewedAt,
+  createdAt: postsTable.createdAt,
+} as const;
+
+const dbPostContentSelection = {
+  ...dbPostMetadataSelection,
+  body: postsTable.body,
+  tldr: postsTable.tldr,
+  keyFacts: postsTable.keyFacts,
+  relevantTickers: postsTable.relevantTickers,
+  diagram: postsTable.diagram,
+} as const;
+
+type DbPostMetadataRow = Pick<DbPostRow, keyof typeof dbPostMetadataSelection>;
+type DbPostContentRow = Pick<DbPostRow, keyof typeof dbPostContentSelection>;
+
+const dbPostContentSchema = z
+  .object({
+    body: z.string().min(1),
+    tldr: z.string().min(1).nullable(),
+    keyFacts: z.array(z.string().min(1)).max(5).nullable(),
+    relevantTickers: z.array(z.string().min(1)).max(6).nullable(),
+    diagram: z
+      .object({
+        type: z.enum(["sequence", "comparison"]),
+        title: z.string().min(1),
+        steps: z
+          .array(
+            z
+              .object({ label: z.string().min(1), detail: z.string().min(1) })
+              .strict(),
+          )
+          .min(2)
+          .max(6),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+
+const dbPostSlugSchema = z
+  .string()
+  .min(1)
+  .max(200)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "slug must be a lowercase URL-safe segment");
+
+type BlogPostNavigation = Pick<
+  BlogPost,
+  | "slug"
+  | "title"
+  | "date"
+  | "draft"
+  | "origin"
+  | "authenticityStatus"
+  | "reviewedBy"
+  | "reviewedAt"
+>;
+
+function describeDbPost(row: Pick<DbPostMetadataRow, "slug">): string {
+  return `posts/${typeof row.slug === "string" && row.slug ? row.slug : "(unknown slug)"}`;
+}
+
+function rejectMalformedDbPost(
+  row: Pick<DbPostMetadataRow, "slug">,
+  error: unknown,
+): null {
+  console.error(
+    `[blog] ignored malformed DB-native post ${describeDbPost(row)}:`,
+    error instanceof Error ? error.message : String(error),
+  );
+  return null;
+}
+
+function parseDbPostMetadata(
+  row: DbPostMetadataRow,
+): { slug: string; frontmatter: Frontmatter } | null {
+  try {
+    const slug = dbPostSlugSchema.parse(row.slug);
+    const frontmatter = parseFrontmatter(
+      {
+        title: row.title,
+        dek: row.dek,
+        pillar: row.pillar,
+        date: row.publishedAt ?? row.createdAt,
+        canonical: row.canonical ?? undefined,
+        tags: row.tags,
+        draft: row.draft,
+        format: row.format,
+        origin: row.origin,
+        sourceStatus: row.sourceStatus,
+        testedStatus: row.testedStatus,
+        authenticityStatus: row.authenticityStatus,
+        reviewedBy: row.reviewedBy ?? undefined,
+        reviewedAt: row.reviewedAt ?? undefined,
+      },
+      describeDbPost(row),
+    );
+    if (frontmatter.canonical && !isHttpUrl(frontmatter.canonical)) {
+      throw new Error("canonical URL must use http:// or https://");
+    }
+    if (
+      frontmatter.authenticityStatus === "verified" &&
+      (!frontmatter.reviewedBy?.trim() ||
+        !(frontmatter.reviewedAt instanceof Date) ||
+        Number.isNaN(frontmatter.reviewedAt.getTime()))
+    ) {
+      throw new Error("verified content requires a valid human review signature");
+    }
+    return { slug, frontmatter };
+  } catch (error) {
+    return rejectMalformedDbPost(row, error);
+  }
+}
+
+function mapDbPostNavigation(row: DbPostMetadataRow): BlogPostNavigation | null {
+  const parsed = parseDbPostMetadata(row);
+  if (!parsed) return null;
+  return {
+    slug: parsed.slug,
+    title: parsed.frontmatter.title,
+    date: parsed.frontmatter.date,
+    draft: parsed.frontmatter.draft,
+    origin: parsed.frontmatter.origin,
+    authenticityStatus: parsed.frontmatter.authenticityStatus,
+    reviewedBy: parsed.frontmatter.reviewedBy,
+    reviewedAt: parsed.frontmatter.reviewedAt,
+  };
+}
+
+function mapDbPost(row: DbPostContentRow): BlogPost | null {
+  const parsed = parseDbPostMetadata(row);
+  if (!parsed) return null;
+
+  const content = dbPostContentSchema.safeParse({
+    body: row.body,
+    tldr: row.tldr,
+    keyFacts: row.keyFacts,
+    relevantTickers: row.relevantTickers,
+    diagram: row.diagram,
+  });
+  if (!content.success) return rejectMalformedDbPost(row, content.error);
+
+  try {
+    if (parsed.frontmatter.draft) {
+      const claims = findFabricatedExperienceClaims(parsed.frontmatter, content.data.body);
+      if (claims.length > 0) {
+        console.warn(
+          `[blog] ${describeDbPost(row)} (draft) is origin: ai_generated and claims ` +
+            `first-hand work — ${claims.join("; ")}. This cannot be published until it is ` +
+            `rewritten or reauthored.`,
+        );
+      }
+    } else {
+      assertNoFabricatedExperience(
+        parsed.frontmatter,
+        content.data.body,
+        `${describeDbPost(row)} (DB-native)`,
+      );
+    }
+  } catch (error) {
+    return rejectMalformedDbPost(row, error);
+  }
+
+  return {
+    ...parsed.frontmatter,
+    slug: parsed.slug,
+    body: content.data.body,
+    readingMinutes: readingMinutes(content.data.body),
+    source: "db",
+    tldr: content.data.tldr ?? undefined,
+    keyFacts: content.data.keyFacts ?? undefined,
+    relevantTickers: content.data.relevantTickers ?? undefined,
+    diagram: content.data.diagram ?? undefined,
+  };
 }
 
 /**
@@ -106,42 +301,17 @@ function getAllMdxPosts(): BlogPost[] {
  * posts by slug (e.g. lib/content/archive.ts) can fetch once and build a map, rather
  * than calling getPost() per row and re-querying the whole table each time.
  */
-export async function getAllDbPosts(): Promise<BlogPost[]> {
+async function loadAllDbPosts(): Promise<BlogPost[]> {
   try {
-    const rows = await getDb().select().from(postsTable).orderBy(desc(postsTable.publishedAt));
-    return rows
-      .filter((r) => r.body !== null)
-      .map((r) => ({
-        title: r.title,
-        dek: r.dek ?? "",
-        pillar: r.pillar as PillarSlug,
-        date: r.publishedAt ?? r.createdAt,
-        canonical: r.canonical ?? undefined,
-        tags: (r.tags as string[] | null) ?? [],
-        draft: r.draft,
-        format: (r.format as Frontmatter["format"]) ?? "article",
-        origin: (r.origin as Frontmatter["origin"]) ?? "ai_generated",
-        sourceStatus: (r.sourceStatus as Frontmatter["sourceStatus"]) ?? "primary",
-        testedStatus: (r.testedStatus as Frontmatter["testedStatus"]) ?? "not_tested",
-        authenticityStatus: (r.authenticityStatus as Frontmatter["authenticityStatus"]) ?? "pending",
-        reviewedBy: r.reviewedBy ?? undefined,
-        reviewedAt: r.reviewedAt ?? undefined,
-        slug: r.slug,
-        body: r.body!,
-        readingMinutes: readingMinutes(r.body!),
-        source: "db" as const,
-        // DB-native pipeline posts don't carry per-post teaches/notCovered data —
-        // that's an MDX/human-authored concept. Empty arrays here, not undefined,
-        // because Frontmatter declares them required-with-default: a DB row that
-        // skipped these keys entirely would otherwise fail the type, not just
-        // render an empty ScopeBlock.
-        teaches: [],
-        notCovered: [],
-        tldr: r.tldr ?? undefined,
-        keyFacts: (r.keyFacts as string[] | null) ?? undefined,
-        relevantTickers: (r.relevantTickers as string[] | null) ?? undefined,
-        diagram: r.diagram ?? undefined,
-      }));
+    const rows = await getDb()
+      .select(dbPostContentSelection)
+      .from(postsTable)
+      .where(isNotNull(postsTable.body))
+      .orderBy(desc(postsTable.publishedAt));
+    return rows.flatMap((row) => {
+      const post = mapDbPost(row);
+      return post ? [post] : [];
+    });
   } catch (error) {
     // Local authoring remains usable without Postgres, but a production Vercel
     // build with DATABASE_URL configured must never silently freeze the DB-backed
@@ -152,10 +322,68 @@ export async function getAllDbPosts(): Promise<BlogPost[]> {
   }
 }
 
+/** One full DB read at most per React server request, shared by every list consumer. */
+export const getAllDbPosts = cache(loadAllDbPosts);
+
+async function loadAllDbPostNavigation(): Promise<BlogPostNavigation[]> {
+  try {
+    const rows = await getDb()
+      .select(dbPostMetadataSelection)
+      .from(postsTable)
+      .where(isNotNull(postsTable.body))
+      .orderBy(desc(postsTable.publishedAt));
+    return rows.flatMap((row) => {
+      const post = mapDbPostNavigation(row);
+      return post ? [post] : [];
+    });
+  } catch (error) {
+    console.error("[blog] could not load DB-native post navigation:", error);
+    if (shouldFailOnDatabaseError()) throw error;
+    return [];
+  }
+}
+
+/** Navigation never needs article bodies; keep its DB scan a narrow metadata projection. */
+const getAllDbPostNavigation = cache(loadAllDbPostNavigation);
+
+const getDbPostBySlug = cache(async function getDbPostBySlug(
+  slug: string,
+): Promise<BlogPost | null> {
+  try {
+    const [row] = await getDb()
+      .select(dbPostContentSelection)
+      .from(postsTable)
+      .where(and(eq(postsTable.slug, slug), isNotNull(postsTable.body)))
+      .limit(1);
+    return row ? mapDbPost(row) : null;
+  } catch (error) {
+    console.error(`[blog] could not load DB-native post ${slug}:`, error);
+    if (shouldFailOnDatabaseError()) throw error;
+    return null;
+  }
+});
+
 export const includeDrafts = process.env.NODE_ENV !== "production";
 
-export function isPublished(post: BlogPost): boolean {
-  return !post.draft && post.authenticityStatus === "verified";
+type PublicationMetadata = Pick<
+  Frontmatter,
+  "draft" | "origin" | "authenticityStatus" | "reviewedBy" | "reviewedAt"
+>;
+
+function hasKnownOrigin(origin: unknown): origin is Frontmatter["origin"] {
+  return origin === "human" || origin === "ai_assisted" || origin === "ai_generated";
+}
+
+export function isPublished(post: PublicationMetadata): boolean {
+  return (
+    post.draft === false &&
+    post.authenticityStatus === "verified" &&
+    hasKnownOrigin(post.origin) &&
+    typeof post.reviewedBy === "string" &&
+    post.reviewedBy.trim().length > 0 &&
+    post.reviewedAt instanceof Date &&
+    !Number.isNaN(post.reviewedAt.getTime())
+  );
 }
 
 /**
@@ -166,20 +394,20 @@ export function isPublished(post: BlogPost): boolean {
  * already hit that exact bug once (two non-atomically-written facts that can
  * disagree) and fixed it by having every caller share this one function instead.
  */
-export function isVisible(post: BlogPost): boolean {
+export function isVisible(post: PublicationMetadata): boolean {
   return includeDrafts || isPublished(post);
 }
 
-export async function getAllPosts(): Promise<BlogPost[]> {
+export const getAllPosts = cache(async function getAllPosts(): Promise<BlogPost[]> {
   const [mdx, db] = await Promise.all([getAllMdxPosts(), getAllDbPosts()]);
   return [...mdx, ...db].filter(isVisible).sort((a, b) => b.date.getTime() - a.date.getTime());
-}
+});
 
 /** Public-only view, even in development and tests. */
-export async function getPublishedPosts(): Promise<BlogPost[]> {
+export const getPublishedPosts = cache(async function getPublishedPosts(): Promise<BlogPost[]> {
   const [mdx, db] = await Promise.all([getAllMdxPosts(), getAllDbPosts()]);
   return [...mdx, ...db].filter(isPublished).sort((a, b) => b.date.getTime() - a.date.getTime());
-}
+});
 
 /**
  * Personal writing and machine-produced Daily briefs are different reader
@@ -187,13 +415,15 @@ export async function getPublishedPosts(): Promise<BlogPost[]> {
  * under copy that says "what I learned". Daily owns that content; Writing keeps
  * human and disclosed AI-assisted authorship only.
  */
-export function isWritingPost(post: Pick<BlogPost, "origin">): boolean {
-  return post.origin !== "ai_generated";
+export function isWritingPost(post: { origin: unknown }): boolean {
+  return post.origin === "human" || post.origin === "ai_assisted";
 }
 
-export async function getPublishedWritingPosts(): Promise<BlogPost[]> {
+export const getPublishedWritingPosts = cache(async function getPublishedWritingPosts(): Promise<
+  BlogPost[]
+> {
   return (await getPublishedPosts()).filter(isWritingPost);
-}
+});
 
 /**
  * Unlike getAllPosts()/getPublishedPosts(), this does NOT filter on draft/
@@ -202,24 +432,32 @@ export async function getPublishedWritingPosts(): Promise<BlogPost[]> {
  * before treating the result as publishable. See app/blog/[slug]/page.tsx and
  * app/archive/[date]/page.tsx.
  */
-export async function getPost(slug: string): Promise<BlogPost | null> {
+export const getPost = cache(async function getPost(slug: string): Promise<BlogPost | null> {
   const mdxMatch = listMdxFiles().find((f) => f.replace(/\.mdx$/, "") === slug);
   if (mdxMatch) return loadMdx(mdxMatch);
 
-  const db = await getAllDbPosts();
-  return db.find((post) => post.slug === slug) ?? null;
-}
+  return getDbPostBySlug(slug);
+});
 
 export async function getPostsByPillar(pillar: string): Promise<BlogPost[]> {
   const all = await getAllPosts();
   return all.filter((post) => post.pillar === pillar);
 }
 
-export async function getAdjacentPosts(slug: string) {
-  const all = await getAllPosts();
+export const getAdjacentPosts = cache(async function getAdjacentPosts(slug: string) {
+  const [mdx, db] = await Promise.all([getAllMdxPosts(), getAllDbPostNavigation()]);
+  const visible: BlogPostNavigation[] = [...mdx, ...db]
+    .filter(isVisible)
+    .sort((a, b) => b.date.getTime() - a.date.getTime());
+  const current = visible.find((post) => post.slug === slug);
+  // /blog is the personal Writing surface. Legacy machine-produced Daily posts may
+  // retain old permalinks, but must not leak into Writing's previous/next sequence.
+  if (!current || !isWritingPost(current)) return { newer: null, older: null };
+
+  const all = visible.filter(isWritingPost);
   const index = all.findIndex((p) => p.slug === slug);
   return {
     newer: index > 0 ? all[index - 1] : null,
     older: index >= 0 && index < all.length - 1 ? all[index + 1] : null,
   };
-}
+});

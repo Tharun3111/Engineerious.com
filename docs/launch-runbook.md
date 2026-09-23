@@ -55,6 +55,28 @@ The AI desk, homepage, search, topic maps, and sitemap read immutable curated sn
 Live score may reorder them, but cannot change their prose or attribution. A topic route is linked
 or indexed only after one verified Writing entry or three explicitly tagged curated signals.
 
+## Public mutation abuse boundary
+
+`/api/subscribe` and `/api/submit` use durable Postgres fixed-window counters before any
+subscriber, provider, or submission mutation. Subscribe consumes a per-client counter (10 per 15
+minutes) and a per-normalized-email counter (3 per hour) together. Submit consumes a per-client
+counter (5 per hour). The database function acquires transaction-level advisory locks for every
+requested dimension in deterministic hash order, rechecks them after locking, then increments all
+dimensions or none. Concurrent requests cannot race an allowance, partially burn an unrelated
+quota, or deadlock by acquiring overlapping dimensions in a different order. The function validates
+PostgreSQL's default `READ COMMITTED` isolation so the post-lock check always sees the preceding
+caller's commit; a non-default isolation setting fails closed.
+
+The database receives only domain-separated HMAC-SHA256 identity digests. It never receives raw
+client addresses or signup addresses for rate limiting. Generate a stable key with
+`openssl rand -hex 32` and set it as `PUBLIC_MUTATION_RATE_LIMIT_SECRET` in every Vercel Preview and
+Production environment. Apply `db/migrations/0010_bent_susan_delgado.sql` before deploying the
+routes (`npm run db:migrate`). If the key, trusted forwarding address, database, or migration is
+unavailable in production, the mutation fails closed. Subscribe still returns its ordinary generic
+success receipt so limiter health and subscriber/opt-out state cannot be enumerated; Submit returns
+429 when limited and 503 when enforcement is unavailable. Keep Vercel's overwritten forwarding
+headers intact, or configure any replacement trusted proxy to overwrite `x-forwarded-for`.
+
 ## Newsletter
 
 Postgres is the durable subscriber capture and sync ledger. Resend (`lib/resend.ts`) remains
@@ -120,3 +142,6 @@ Blog, Daily, and Archive return 200; and the sitemap contains none of the always
 or utility routes. `/daily` appears in the sitemap only after a valid published snapshot exists;
 `/ai` and topic hubs appear only after their reviewed-content thresholds are met. Confirm unknown
 topic slugs return a literal 404 and `/api/search` contains public kinds only.
+Before exercising public POST routes, verify migration `0010_bent_susan_delgado.sql` is applied and
+`PUBLIC_MUTATION_RATE_LIMIT_SECRET` is present in both Preview and Production. A missing prerequisite
+must prevent subscriber/provider/submission writes, not silently bypass rate limiting.

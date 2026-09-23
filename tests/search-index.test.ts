@@ -49,6 +49,35 @@ function sources(): PublicSearchSources {
         keywords: ["Next.js", "Postgres"],
       },
     ],
+    handbook: [
+      {
+        kind: "concept",
+        routeKind: "concepts",
+        slug: "hybrid-search",
+        title: "Hybrid search",
+        description: "A reviewed handbook explanation.",
+        label: "Handbook concept",
+        keywords: ["retrieval", "ranking"],
+      },
+      {
+        kind: "framework",
+        routeKind: "frameworks",
+        slug: "langgraph",
+        title: "LangGraph",
+        description: "A reviewed framework decision guide.",
+        label: "Framework guide",
+        keywords: ["agents", "orchestration"],
+      },
+      {
+        kind: "model",
+        routeKind: "models",
+        slug: "example-model",
+        title: "Example Model",
+        description: "A dated, source-linked model note.",
+        label: "Model note",
+        keywords: ["reasoning"],
+      },
+    ],
   };
 }
 
@@ -68,7 +97,7 @@ describe("public search index", () => {
       expect.objectContaining({
         id: "signal:42",
         kind: "signal",
-        href: "/ai#signal-42",
+        href: "/ai?signal=42#signal-42",
       }),
       expect.objectContaining({
         id: "topic:rag",
@@ -79,6 +108,21 @@ describe("public search index", () => {
         id: "project:engineerious",
         kind: "project",
         href: "/projects/engineerious",
+      }),
+      expect.objectContaining({
+        id: "concept:hybrid-search",
+        kind: "concept",
+        href: "/ai/concepts/hybrid-search",
+      }),
+      expect.objectContaining({
+        id: "framework:langgraph",
+        kind: "framework",
+        href: "/ai/frameworks/langgraph",
+      }),
+      expect.objectContaining({
+        id: "model:example-model",
+        kind: "model",
+        href: "/ai/models/example-model",
       }),
     ]);
   });

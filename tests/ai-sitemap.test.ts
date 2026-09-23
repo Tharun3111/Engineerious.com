@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { aiDeskRobots } from "@/app/ai/page";
-import { buildAiSitemapEntries } from "@/app/sitemap";
+import { buildAiSitemapEntries, buildHandbookSitemapEntries } from "@/app/sitemap";
 import { topicPageRobots } from "@/app/topics/[slug]/page";
+import type { HandbookEntry, PublishedHandbookEntry } from "@/lib/handbook";
 import type { TopicSignal, TopicSlug, TopicWriting } from "@/lib/topics";
 
 function writing(
@@ -24,6 +25,42 @@ function signal(
   curatedAt: string,
 ): TopicSignal {
   return { topicSlugs, curatedAt };
+}
+
+function handbook(
+  overrides: Partial<PublishedHandbookEntry> = {},
+): PublishedHandbookEntry {
+  return {
+    schemaVersion: 1,
+    kind: "concept",
+    routeKind: "concepts",
+    slug: "hybrid-search",
+    title: "Hybrid search",
+    summary: "A reviewed retrieval reference.",
+    body: "## Definition\n\nA grounded explanation.",
+    myTake: "Use both channels only when each closes a measured gap.",
+    tags: ["retrieval"],
+    topicSlugs: [],
+    sources: [
+      {
+        label: "Primary docs",
+        publisher: "Example Lab",
+        url: "https://example.com/search",
+        accessedAt: new Date("2026-08-24T09:00:00.000Z"),
+      },
+    ],
+    sourceStatus: "primary",
+    testedStatus: "tested_once",
+    draft: false,
+    authenticityStatus: "verified",
+    origin: "human",
+    publishedAt: new Date("2026-08-20T10:00:00.000Z"),
+    updatedAt: new Date("2026-08-24T10:00:00.000Z"),
+    reviewedBy: "Tharun",
+    reviewedAt: new Date("2026-08-24T11:00:00.000Z"),
+    readingMinutes: 4,
+    ...overrides,
+  };
 }
 
 describe("AI and topic sitemap entries", () => {
@@ -86,6 +123,56 @@ describe("AI and topic sitemap entries", () => {
     expect(entries.find((entry) => entry.url.endsWith("/topics/agents"))?.lastModified).toEqual(
       new Date("2026-08-25T10:03:00.000Z"),
     );
+  });
+
+  it("includes an untagged published handbook entry and uses its real update date", () => {
+    const entry = handbook({
+      updatedAt: new Date("2026-08-27T10:00:00.000Z"),
+      reviewedAt: new Date("2026-08-27T11:00:00.000Z"),
+    });
+    const entries = buildAiSitemapEntries(site, [], [], [entry]);
+
+    expect(entries.map((item) => item.url)).toEqual([
+      `${site}/ai`,
+      `${site}/ai/concepts/hybrid-search`,
+    ]);
+    expect(entries[0].lastModified).toEqual(entry.updatedAt);
+    expect(entries[1].lastModified).toEqual(entry.updatedAt);
+  });
+
+  it("uses explicit handbook topic membership and keeps model notes under /ai/models", () => {
+    const tagged = handbook({ topicSlugs: ["rag"] });
+    const model = handbook({
+      kind: "model",
+      routeKind: "models",
+      slug: "example-model",
+      title: "Example model",
+      topicSlugs: [],
+      modelFacts: {
+        lab: "Example Lab",
+        releaseDate: new Date("2026-08-01T00:00:00.000Z"),
+        accessStatus: "public",
+        openStatus: "open_weights",
+      },
+    });
+    const entries = buildAiSitemapEntries(site, [], [], [tagged, model]);
+
+    expect(entries.map((item) => item.url)).toEqual([
+      `${site}/ai`,
+      `${site}/topics/rag`,
+      `${site}/ai/concepts/hybrid-search`,
+      `${site}/ai/models/example-model`,
+    ]);
+    expect(entries.some((item) => item.url === `${site}/models/example-model`)).toBe(false);
+  });
+
+  it("filters draft-like entries out of handbook sitemap helpers", () => {
+    const published = handbook();
+    const draft: HandbookEntry = { ...published, draft: true };
+
+    expect(buildHandbookSitemapEntries(site, [draft, published]).map((item) => item.url)).toEqual([
+      `${site}/ai/concepts/hybrid-search`,
+    ]);
   });
 });
 

@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 import { getPublishedWritingPosts } from "@/lib/content/blog";
 import { getCuratedAiCorpus } from "@/lib/curated-ai-queries";
 import { getDailyBriefArchive } from "@/lib/daily-queries";
+import {
+  getPublishedHandbookEntries,
+  type HandbookKind,
+  type PublishedHandbookEntry,
+} from "@/lib/handbook";
 import { getPillar } from "@/lib/pillars";
 import { projects } from "@/lib/projects";
 import { buildSearchIndex } from "@/lib/search-index";
@@ -12,12 +17,22 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const HANDBOOK_LABELS = {
+  concept: "Handbook concept",
+  framework: "Framework guide",
+  model: "Model note",
+} as const satisfies Record<HandbookKind, string>;
+
 function reportSourceIssue(source: string, error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);
   console.error(`[search] ${source} unavailable: ${message}`);
 }
 
-async function settle<T>(source: string, load: () => Promise<T>, fallback: T): Promise<T> {
+async function settle<T>(
+  source: string,
+  load: () => T | Promise<T>,
+  fallback: T,
+): Promise<T> {
   try {
     return await load();
   } catch (error) {
@@ -41,7 +56,7 @@ function formatDailyDate(date: string): string {
  * falling back to drafts, raw ingestion rows, or closed detail routes.
  */
 export async function GET() {
-  const [writing, dailyResult, signalResult] = await Promise.all([
+  const [writing, dailyResult, signalResult, handbook] = await Promise.all([
     settle("Writing", () => getPublishedWritingPosts(), []),
     settle(
       "Daily",
@@ -56,12 +71,13 @@ export async function GET() {
       () => getCuratedAiCorpus(),
       { signals: [], error: null },
     ),
+    settle<PublishedHandbookEntry[]>("Handbook", () => getPublishedHandbookEntries(), []),
   ]);
 
   if (dailyResult.error) reportSourceIssue("Daily", dailyResult.error);
   if (signalResult.error) reportSourceIssue("AI signals", signalResult.error);
 
-  const activeTopics = getActiveTopics(writing, signalResult.signals);
+  const activeTopics = getActiveTopics(writing, signalResult.signals, handbook);
   const targetableSignals = signalResult.signals.slice(0, 100);
   const index = buildSearchIndex({
     writing: writing.map((post) => ({
@@ -119,6 +135,19 @@ export async function GET() {
       description: project.summary,
       label: project.status,
       keywords: [project.role, ...project.technologies, ...project.capabilities],
+    })),
+    handbook: handbook.map((entry) => ({
+      kind: entry.kind,
+      routeKind: entry.routeKind,
+      slug: entry.slug,
+      title: entry.title,
+      description: entry.summary,
+      label: HANDBOOK_LABELS[entry.kind],
+      keywords: [
+        ...entry.tags,
+        ...entry.topicSlugs,
+        ...entry.sources.flatMap((source) => [source.label, source.publisher]),
+      ],
     })),
   });
 

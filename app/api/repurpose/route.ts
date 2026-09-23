@@ -6,16 +6,23 @@ import { getPost, isPublished } from "@/lib/content/blog";
 import { llmConfigured } from "@/lib/llm";
 import { PLATFORMS, repurpose } from "@/lib/repurpose";
 import { resolveLaunchPlatforms } from "@/lib/repurpose/launch-policy";
+import {
+  adminUnauthorizedResponse,
+  JSON_BODY_LIMITS,
+  readBoundedJsonMutation,
+} from "@/lib/request-safety";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
-const bodySchema = z.object({
-  slug: z.string().min(1),
-  /** Regenerate a subset, e.g. after editing the prompt template for one platform. */
-  platforms: z.array(z.enum(PLATFORMS)).optional(),
-});
+const bodySchema = z
+  .object({
+    slug: z.string().trim().min(1).max(200),
+    /** Regenerate a subset, e.g. after editing the prompt template for one platform. */
+    platforms: z.array(z.enum(PLATFORMS)).max(PLATFORMS.length).optional(),
+  })
+  .strict();
 
 /**
  * Generate platform-native drafts for a published post.
@@ -28,11 +35,12 @@ const bodySchema = z.object({
  * is meant to be callable from a script or CI as well as the browser).
  */
 export async function POST(request: Request) {
-  if (!authorizeAdmin(request)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  if (!authorizeAdmin(request)) return adminUnauthorizedResponse();
 
-  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  const body = await readBoundedJsonMutation(request, JSON_BODY_LIMITS.admin);
+  if (!body.ok) return body.response;
+
+  const parsed = bodySchema.safeParse(body.value);
   if (!parsed.success) {
     return NextResponse.json({ error: "Body must be { slug, platforms? }" }, { status: 400 });
   }

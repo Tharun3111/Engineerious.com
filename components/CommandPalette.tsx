@@ -11,6 +11,9 @@ const KIND_LABELS = {
   signal: "AI signal",
   topic: "Topic",
   project: "Project",
+  concept: "Concept",
+  framework: "Framework",
+  model: "Model",
 } satisfies Record<SearchItemKind, string>;
 
 function meaningfulFocusTarget(target: Element | null): target is HTMLElement {

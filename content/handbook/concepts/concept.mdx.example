@@ -1,0 +1,62 @@
+---
+schemaVersion: 1
+kind: concept
+title: "<specific concept name>"
+summary: "<plain-language summary of what the reader will understand>"
+publishedAt: "<YYYY-MM-DD>"
+updatedAt: "<YYYY-MM-DD>"
+draft: true
+origin: human
+sourceStatus: primary
+testedStatus: not_tested
+authenticityStatus: pending
+reviewedBy: "<human reviewer>"
+reviewedAt: "<ISO 8601 timestamp after the final edit>"
+myTake: >-
+  <the author's own analysis; distinguish judgment from sourced fact>
+tags:
+  - "<descriptive tag>"
+topicSlugs: []
+sources:
+  - label: "<specific document or paper title>"
+    publisher: "<publisher or organization>"
+    url: "<https://source-url>"
+    publishedAt: "<YYYY-MM-DD if known>"
+    accessedAt: "<YYYY-MM-DD>"
+---
+
+## What is it
+
+<Define the concept precisely.>
+
+## Why does it exist
+
+<Describe the concrete problem or constraint that led to it.>
+
+## How it works
+
+<Explain the mechanism and important boundaries.>
+
+## Architecture
+
+<Describe the components and boundaries when the concept has a system shape; otherwise explain why it is architecture-independent.>
+
+## Example
+
+<Give a sourced or clearly labeled illustrative example.>
+
+## When to use it
+
+<Name the conditions that make it useful.>
+
+## When NOT to use it
+
+<Name the conditions that make it a poor choice.>
+
+## Tools
+
+<List only relevant, verified tools or state that the concept is tool-independent.>
+
+## Common mistakes
+
+<Explain likely implementation or reasoning errors.>

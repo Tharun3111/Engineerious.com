@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { digests, posts, researchRuns } from "@/db/schema";
+import { authorizeAdmin } from "@/lib/auth";
 import { assertNoFabricatedExperience } from "@/lib/content/frontmatter";
 import {
   collectDailySourceUrls,
@@ -30,6 +31,11 @@ import { env } from "@/lib/env";
 import { submitUrls } from "@/lib/indexnow";
 import { FEED_CACHE_TAG } from "@/lib/queries";
 import { parseStoredFindings, type Finding } from "@/lib/research";
+import {
+  adminUnauthorizedResponse,
+  JSON_BODY_LIMITS,
+  readBoundedJsonMutation,
+} from "@/lib/request-safety";
 import { reviewBlockingIssues, reviewDailyBrief } from "@/lib/review";
 import { AUTHOR_NAME } from "@/lib/site";
 
@@ -671,7 +677,12 @@ async function publishLegacyDigest(
 
 /** Human-only Daily lifecycle. No action in this route sends email. */
 export async function POST(request: Request) {
-  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  if (!authorizeAdmin(request)) return adminUnauthorizedResponse();
+
+  const body = await readBoundedJsonMutation(request, JSON_BODY_LIMITS.admin);
+  if (!body.ok) return body.response;
+
+  const parsed = bodySchema.safeParse(body.value);
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid digest action.", issues: parsed.error.issues },

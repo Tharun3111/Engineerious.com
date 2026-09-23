@@ -11,4 +11,9 @@ describe("Writing and Daily boundary", () => {
   it("keeps machine-produced briefs out of personal Writing", () => {
     expect(isWritingPost({ origin: "ai_generated" })).toBe(false);
   });
+
+  it("fails closed for malformed legacy origins", () => {
+    expect(isWritingPost({ origin: "legacy_unknown" })).toBe(false);
+    expect(isWritingPost({ origin: null })).toBe(false);
+  });
 });

@@ -10,6 +10,7 @@ import {
   latestAiActivityAt,
   normalizeTopicTag,
   topics,
+  type TopicHandbook,
   type TopicSignal,
   type TopicSlug,
   type TopicWriting,
@@ -32,6 +33,27 @@ function signal(
   curatedAt = "2026-08-21T12:00:00.000Z",
 ): TopicSignal {
   return { topicSlugs, curatedAt };
+}
+
+function handbook(
+  topicSlugs: readonly TopicSlug[],
+  overrides: Partial<TopicHandbook> = {},
+): TopicHandbook {
+  return {
+    slug: "retrieval-evaluation",
+    routeKind: "concepts",
+    topicSlugs,
+    draft: false,
+    authenticityStatus: "verified",
+    origin: "human",
+    publishedAt: new Date("2026-08-20T10:00:00.000Z"),
+    updatedAt: new Date("2026-08-26T10:00:00.000Z"),
+    reviewedBy: "Tharun",
+    reviewedAt: new Date("2026-08-26T11:00:00.000Z"),
+    sources: [{ url: "https://example.com/evals" }],
+    myTake: "Measure retrieval separately from generation.",
+    ...overrides,
+  };
 }
 
 describe("topic registry", () => {
@@ -90,6 +112,28 @@ describe("topic registry", () => {
     ).toBe(false);
   });
 
+  it("activates for one published handbook entry only through its explicit topic slug", () => {
+    const rag = getTopic("rag")!;
+    const tagged = handbook(["rag"]);
+    const untagged = handbook([], { slug: "rag-in-the-title-only" });
+
+    expect(buildTopicActivity(rag, [], [], [tagged]).active).toBe(true);
+    expect(buildTopicActivity(rag, [], [], [tagged]).handbook).toEqual([tagged]);
+    expect(buildTopicActivity(rag, [], [], [untagged]).active).toBe(false);
+  });
+
+  it("does not let incomplete handbook provenance activate a topic", () => {
+    const rag = getTopic("rag")!;
+    const invalid = [
+      handbook(["rag"], { reviewedBy: "" }),
+      handbook(["rag"], { sources: [] }),
+      handbook(["rag"], { myTake: "" }),
+      handbook(["rag"], { origin: "ai_generated" }),
+    ];
+
+    expect(buildTopicActivity(rag, [], [], invalid).active).toBe(false);
+  });
+
   it("returns only active hubs and their latest real activity timestamps", () => {
     const signals = [
       signal(["mcp"], "2026-08-22T12:00:00.000Z"),
@@ -103,6 +147,19 @@ describe("topic registry", () => {
     expect(hasUsefulAiContent([], [signal([])])).toBe(true);
     expect(latestAiActivityAt([writing()], signals)?.toISOString()).toBe(
       "2026-08-25T12:00:00.000Z",
+    );
+  });
+
+  it("counts untagged public handbook material as useful AI content and real desk activity", () => {
+    const entry = handbook([], {
+      updatedAt: new Date("2026-08-27T12:00:00.000Z"),
+      reviewedAt: new Date("2026-08-27T13:00:00.000Z"),
+    });
+
+    expect(getActiveTopics([], [], [entry])).toEqual([]);
+    expect(hasUsefulAiContent([], [], [entry])).toBe(true);
+    expect(latestAiActivityAt([], [], [entry])?.toISOString()).toBe(
+      "2026-08-27T12:00:00.000Z",
     );
   });
 });

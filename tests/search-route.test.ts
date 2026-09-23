@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getPublishedWritingPosts: vi.fn(),
   getDailyBriefArchive: vi.fn(),
   getCuratedAiCorpus: vi.fn(),
+  getPublishedHandbookEntries: vi.fn(),
 }));
 
 vi.mock("@/lib/content/blog", () => ({
@@ -17,6 +18,9 @@ vi.mock("@/lib/daily-queries", () => ({
 }));
 vi.mock("@/lib/curated-ai-queries", () => ({
   getCuratedAiCorpus: mocks.getCuratedAiCorpus,
+}));
+vi.mock("@/lib/handbook", () => ({
+  getPublishedHandbookEntries: mocks.getPublishedHandbookEntries,
 }));
 
 import { GET } from "@/app/api/search/route";
@@ -75,6 +79,32 @@ beforeEach(() => {
     ],
     error: null,
   });
+  mocks.getPublishedHandbookEntries.mockReturnValue([
+    {
+      kind: "concept",
+      routeKind: "concepts",
+      slug: "hybrid-search",
+      title: "Hybrid search",
+      summary: "A reviewed retrieval reference.",
+      tags: ["retrieval"],
+      topicSlugs: [],
+      sources: [
+        {
+          label: "Primary docs",
+          publisher: "Example Lab",
+          url: "https://example.com/docs",
+        },
+      ],
+      draft: false,
+      authenticityStatus: "verified",
+      origin: "human",
+      publishedAt: new Date("2026-08-20T10:00:00.000Z"),
+      updatedAt: new Date("2026-08-24T10:00:00.000Z"),
+      reviewedBy: "Tharun",
+      reviewedAt: new Date("2026-08-24T11:00:00.000Z"),
+      myTake: "Use it when either lexical or semantic retrieval alone leaves measurable gaps.",
+    },
+  ]);
 });
 
 describe("GET /api/search", () => {
@@ -91,12 +121,25 @@ describe("GET /api/search", () => {
       "signal",
       "topic",
       "project",
+      "concept",
     ]);
     expect(index).toContainEqual(
-      expect.objectContaining({ id: "signal:42", href: "/ai#signal-42" }),
+      expect.objectContaining({
+        id: "signal:42",
+        href: "/ai?signal=42#signal-42",
+      }),
     );
     expect(index).toContainEqual(
       expect.objectContaining({ id: "topic:rag", href: "/topics/rag" }),
+    );
+    expect(index).toContainEqual(
+      expect.objectContaining({
+        id: "concept:hybrid-search",
+        href: "/ai/concepts/hybrid-search",
+      }),
+    );
+    expect(index).not.toContainEqual(
+      expect.objectContaining({ href: "/models/hybrid-search" }),
     );
     expect(index).not.toContainEqual(expect.objectContaining({ id: "topic:agents" }));
     expect(Object.keys(index.find((entry: { id: string }) => entry.id === "signal:42")).sort()).toEqual(
@@ -112,6 +155,9 @@ describe("GET /api/search", () => {
     mocks.getPublishedWritingPosts.mockRejectedValue(new Error("writing unavailable"));
     mocks.getDailyBriefArchive.mockRejectedValue(new Error("daily unavailable"));
     mocks.getCuratedAiCorpus.mockRejectedValue(new Error("signals unavailable"));
+    mocks.getPublishedHandbookEntries.mockImplementation(() => {
+      throw new Error("handbook unavailable");
+    });
 
     const response = await GET();
     const index = await response.json();
@@ -119,8 +165,8 @@ describe("GET /api/search", () => {
     expect(index.every((entry: { kind: string }) => entry.kind === "project")).toBe(true);
     expect(index.some((entry: { href: string }) => entry.href.startsWith("/blog/"))).toBe(false);
     expect(index.some((entry: { href: string }) => entry.href.startsWith("/daily/"))).toBe(false);
-    expect(index.some((entry: { href: string }) => entry.href.startsWith("/ai#"))).toBe(false);
-    expect(errorSpy).toHaveBeenCalledTimes(3);
+    expect(index.some((entry: { href: string }) => entry.href.includes("#signal-"))).toBe(false);
+    expect(errorSpy).toHaveBeenCalledTimes(4);
     errorSpy.mockRestore();
   });
 
@@ -168,7 +214,10 @@ describe("GET /api/search", () => {
     );
     expect(signalResults).toHaveLength(100);
     expect(signalResults).toContainEqual(
-      expect.objectContaining({ id: "signal:100", href: "/ai#signal-100" }),
+      expect.objectContaining({
+        id: "signal:100",
+        href: "/ai?signal=100#signal-100",
+      }),
     );
     expect(signalResults).not.toContainEqual(expect.objectContaining({ id: "signal:101" }));
   });

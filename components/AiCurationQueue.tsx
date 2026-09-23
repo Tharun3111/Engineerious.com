@@ -11,6 +11,7 @@ import {
 } from "@/lib/curated-ai";
 import type { CuratedAiAdminRecord } from "@/lib/curated-ai-queries";
 import { hostname } from "@/lib/dedupe";
+import { isHttpUrl } from "@/lib/editorial-safety";
 
 async function postCuration(body: unknown): Promise<void> {
   const response = await fetch("/api/admin/curated-ai", {
@@ -43,6 +44,7 @@ function CurationCard({ item }: { item: CuratedAiAdminRecord }) {
   // An ingestion aiNote is context, not a reviewed claim. It is intentionally
   // shown below but never prefilled into the publishable human field.
   const [whyItMatters, setWhyItMatters] = useState(item.signal?.whyItMatters ?? "");
+  const safeUrl = isHttpUrl(item.url);
 
   const run = async (action: () => Promise<void>) => {
     if (busy) return;
@@ -71,16 +73,22 @@ function CurationCard({ item }: { item: CuratedAiAdminRecord }) {
           <p className="font-mono text-[11.5px] uppercase tracking-[0.08em] text-muted">
             {item.type} · item #{item.id} · score {item.score.toFixed(3)}
           </p>
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-1 block break-words text-[15px] font-semibold text-accent-strong"
-          >
-            {item.title} ↗
-          </a>
+          {safeUrl ? (
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 block break-words text-[15px] font-semibold text-accent-strong"
+            >
+              {item.title} ↗
+            </a>
+          ) : (
+            <span className="mt-1 block break-words text-[15px] font-semibold">
+              {item.title}
+            </span>
+          )}
           <p className="mt-0.5 font-mono text-[11.5px] text-muted">
-            {item.source} · {hostname(item.url)}
+            {item.source} · {safeUrl ? hostname(item.url) : "unsafe/invalid URL"}
           </p>
         </div>
         <span className={item.hasCuratedState ? "pill pill-accent" : "pill"}>
@@ -143,6 +151,10 @@ function CurationCard({ item }: { item: CuratedAiAdminRecord }) {
           className="mt-4 space-y-4"
           onSubmit={(event) => {
             event.preventDefault();
+            if (!safeUrl) {
+              setError("This legacy item has an unsafe source URL and cannot be published.");
+              return;
+            }
             if (!category) {
               setError("Choose a category before publishing.");
               return;
@@ -249,7 +261,12 @@ function CurationCard({ item }: { item: CuratedAiAdminRecord }) {
             Publishing copies the current source, URL, author, and source timestamps from the database.
             Later ingestion changes cannot rewrite the public snapshot.
           </p>
-          <button type="submit" disabled={busy} className="btn btn-primary btn-sm disabled:opacity-60">
+          {!safeUrl && (
+            <p role="alert" className="text-[12.5px] text-alarm">
+              Unsafe legacy URL. Reject or repair this source before curation.
+            </p>
+          )}
+          <button type="submit" disabled={busy || !safeUrl} className="btn btn-primary btn-sm disabled:opacity-60">
             {busy ? "Publishing…" : "Publish curated snapshot"}
           </button>
         </form>

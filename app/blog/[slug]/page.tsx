@@ -13,12 +13,14 @@ import { ShareExcerpt } from "@/components/ShareExcerpt";
 import { StockStrip } from "@/components/StockStrip";
 import { TLDR } from "@/components/TLDR";
 import { getAdjacentPosts, getAllPosts, getPost, isVisible, type BlogPost } from "@/lib/content/blog";
-import { getPostRow } from "@/lib/content/sync";
+import { getPostDistribution, sanitizeDistributionLinks } from "@/lib/content/sync";
 import { env } from "@/lib/env";
 import { AUTHOR_NAME, SITE_NAME } from "@/lib/site";
 import { getStockStripQuotes } from "@/lib/stocks";
 import { getPillar } from "@/lib/pillars";
 import { isoDate } from "@/lib/time";
+
+export const revalidate = 300;
 
 export async function generateStaticParams() {
   const posts = await getAllPosts();
@@ -103,6 +105,28 @@ const PLATFORM_LABELS: Record<string, string> = {
   facebook: "Facebook",
 };
 
+export function DistributionLinks({ distribution }: { distribution: unknown }) {
+  const links = Object.entries(sanitizeDistributionLinks(distribution));
+  if (links.length === 0) return null;
+
+  return (
+    <section className="border-t border-rule pt-5">
+      <h2 className="font-mono text-[12px] uppercase tracking-wide text-muted">
+        Distributed to
+      </h2>
+      <ul className="mt-1 flex flex-wrap gap-x-3 text-[13.5px]">
+        {links.map(([platform, url]) => (
+          <li key={platform}>
+            <a href={url} target="_blank" rel="noopener noreferrer">
+              {PLATFORM_LABELS[platform] ?? platform} ↗
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const post = await getPost(slug);
@@ -110,10 +134,11 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
   // Distribution links come from the DB and are optional — the article must render
   // fine on a machine with no DATABASE_URL.
-  const row = await getPostRow(slug);
-  const distribution = Object.entries(row?.distribution ?? {}).filter(([, url]) => Boolean(url));
-  const { newer, older } = await getAdjacentPosts(slug);
-  const stockQuotes = await getStockStripQuotes(slug, post.relevantTickers ?? []);
+  const [distribution, { newer, older }, stockQuotes] = await Promise.all([
+    getPostDistribution(slug),
+    getAdjacentPosts(slug),
+    getStockStripQuotes(slug, post.relevantTickers ?? []),
+  ]);
 
   // One column system for the whole record, so no block is left dangling at its
   // own width. The shell is 860px centred; prose, TL;DR and Key facts sit at 68ch
@@ -200,22 +225,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         url={post.canonical ?? `${env.siteUrl.replace(/\/$/, "")}/blog/${post.slug}`}
       />
 
-      {distribution.length > 0 && (
-        <section className="border-t border-rule pt-5">
-          <h2 className="font-mono text-[12px] uppercase tracking-wide text-muted">
-            Distributed to
-          </h2>
-          <ul className="mt-1 flex flex-wrap gap-x-3 text-[13.5px]">
-            {distribution.map(([platform, url]) => (
-              <li key={platform}>
-                <a href={url} target="_blank" rel="noopener noreferrer">
-                  {PLATFORM_LABELS[platform] ?? platform} ↗
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <DistributionLinks distribution={distribution} />
 
       <NewsletterCTA />
 

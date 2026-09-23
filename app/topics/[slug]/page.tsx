@@ -3,12 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 
-import { AiSignalList } from "@/components/AiSignalList";
+import { AiSignalList, buildSignalRankIndex } from "@/components/AiSignalList";
 import { EvidenceRail } from "@/components/EvidenceRail";
 import { JsonLd } from "@/components/JsonLd";
 import { getPublishedWritingPosts } from "@/lib/content/blog";
 import { getCuratedAiCorpus } from "@/lib/curated-ai-queries";
 import { env } from "@/lib/env";
+import { getPublishedHandbookEntries, type HandbookEntry } from "@/lib/handbook";
 import { buildTopicActivity, getTopic, type TopicDefinition } from "@/lib/topics";
 import { isoDate } from "@/lib/time";
 
@@ -38,15 +39,26 @@ export function topicBreadcrumbJsonLd(topic: TopicDefinition) {
   };
 }
 
+function loadHandbookSafely(): HandbookEntry[] {
+  try {
+    return getPublishedHandbookEntries();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[topic-page] Handbook unavailable: ${message}`);
+    return [];
+  }
+}
+
 const loadTopicPage = cache(async (slug: string) => {
   const topic = getTopic(slug);
   if (!topic) return null;
 
-  const [posts, signalResult] = await Promise.all([
+  const [posts, signalResult, handbook] = await Promise.all([
     getPublishedWritingPosts(),
     getCuratedAiCorpus(),
+    Promise.resolve().then(loadHandbookSafely),
   ]);
-  const activity = buildTopicActivity(topic, posts, signalResult.signals);
+  const activity = buildTopicActivity(topic, posts, signalResult.signals, handbook);
   const startHere = topic.startHereSlugs
     .map((postSlug) => posts.find((post) => post.slug === postSlug))
     .filter((post): post is NonNullable<typeof post> => Boolean(post));
@@ -56,6 +68,7 @@ const loadTopicPage = cache(async (slug: string) => {
     topic,
     activity,
     signalResult,
+    signalRankIndex: buildSignalRankIndex(signalResult.signals),
     displaySignals: activity.signals.slice(0, 100),
     startHere,
     reading: activity.writing.filter((post) => !startHereSlugs.has(post.slug)),
@@ -91,7 +104,15 @@ export default async function TopicPage({ params }: TopicPageProps) {
   const data = await loadTopicPage(slug);
   if (!data || !data.activity.active) notFound();
 
-  const { topic, activity, signalResult, displaySignals, startHere, reading } = data;
+  const {
+    topic,
+    activity,
+    signalResult,
+    signalRankIndex,
+    displaySignals,
+    startHere,
+    reading,
+  } = data;
 
   return (
     <div className="mx-auto max-w-5xl py-10 sm:py-14">
@@ -133,6 +154,14 @@ export default async function TopicPage({ params }: TopicPageProps) {
                 {activity.signals.length}
               </dd>
             </div>
+            {activity.handbook.length > 0 ? (
+              <div className="flex items-baseline justify-between gap-4 py-3">
+                <dt className="section-label">Handbook</dt>
+                <dd className="font-display text-[16px] font-semibold tabular-nums">
+                  {activity.handbook.length}
+                </dd>
+              </div>
+            ) : null}
             {activity.latestActivityAt ? (
               <div className="flex items-baseline justify-between gap-4 py-3">
                 <dt className="section-label">Latest activity</dt>
@@ -178,10 +207,49 @@ export default async function TopicPage({ params }: TopicPageProps) {
         </section>
       ) : null}
 
+      {activity.handbook.length > 0 ? (
+        <section
+          aria-labelledby="topic-handbook-title"
+          className={startHere.length > 0 ? "mt-12" : "border-t border-fg pt-5"}
+        >
+          <p className="section-label">Learn from the handbook</p>
+          <h2 id="topic-handbook-title" className="font-display mt-1 text-[21px] font-semibold">
+            Reviewed references
+          </h2>
+          <ol className="mt-4 divide-y divide-rule border-y border-rule">
+            {activity.handbook.map((entry) => (
+              <li key={`${entry.routeKind}:${entry.slug}`}>
+                <Link
+                  href={`/ai/${entry.routeKind}/${entry.slug}`}
+                  className="grid gap-2 py-5 hover:text-accent sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-6"
+                >
+                  <p className="font-mono text-[10.5px] text-muted">
+                    <time dateTime={entry.updatedAt.toISOString()}>{isoDate(entry.updatedAt)}</time>
+                    <span className="mt-1 block">{entry.readingMinutes} min read</span>
+                  </p>
+                  <div>
+                    <h3 className="font-display max-w-[42ch] text-[17px] font-semibold leading-snug">
+                      {entry.title}
+                    </h3>
+                    <p className="mt-2 max-w-[64ch] text-[14px] leading-6 text-muted">
+                      {entry.summary}
+                    </p>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
+
       {reading.length > 0 ? (
         <section
           aria-labelledby="topic-reading-title"
-          className={startHere.length > 0 ? "mt-12" : "border-t border-fg pt-5"}
+          className={
+            startHere.length > 0 || activity.handbook.length > 0
+              ? "mt-12"
+              : "border-t border-fg pt-5"
+          }
         >
           <p className="section-label">Learn and read</p>
           <h2 id="topic-reading-title" className="font-display mt-1 text-[21px] font-semibold">
@@ -216,13 +284,21 @@ export default async function TopicPage({ params }: TopicPageProps) {
       {displaySignals.length > 0 || signalResult.error ? (
         <section
           aria-labelledby="topic-signal-title"
-          className={startHere.length > 0 || reading.length > 0 ? "mt-12" : "border-t border-fg pt-5"}
+          className={
+            startHere.length > 0 || activity.handbook.length > 0 || reading.length > 0
+              ? "mt-12"
+              : "border-t border-fg pt-5"
+          }
         >
           <p className="section-label">Reviewed signal</p>
           <h2 id="topic-signal-title" className="font-display mt-1 mb-5 text-[21px] font-semibold">
             What changed
           </h2>
-          <AiSignalList signals={displaySignals} error={signalResult.error} />
+          <AiSignalList
+            signals={displaySignals}
+            rankByItemId={signalRankIndex}
+            error={signalResult.error}
+          />
         </section>
       ) : null}
 

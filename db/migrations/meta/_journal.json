@@ -71,6 +71,13 @@
       "when": 1787656778588,
       "tag": "0009_perpetual_warpath",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787659804883,
+      "tag": "0010_bent_susan_delgado",
+      "breakpoints": true
     }
   ]
 }

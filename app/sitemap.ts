@@ -8,6 +8,11 @@ import {
   type PublicDailyBrief,
 } from "@/lib/daily-queries";
 import { env } from "@/lib/env";
+import {
+  getPublishedHandbookEntries,
+  isPublishedHandbookEntry,
+  type HandbookEntry,
+} from "@/lib/handbook";
 import { projects } from "@/lib/projects";
 import {
   getActiveTopics,
@@ -44,9 +49,11 @@ export function buildAiSitemapEntries(
   site: string,
   writing: readonly TopicWriting[],
   signals: readonly TopicSignal[],
+  handbook: readonly HandbookEntry[] = [],
 ): MetadataRoute.Sitemap {
-  if (!hasUsefulAiContent(writing, signals)) return [];
-  const latest = latestAiActivityAt(writing, signals);
+  const publicHandbook = handbook.filter(isPublishedHandbookEntry);
+  if (!hasUsefulAiContent(writing, signals, publicHandbook)) return [];
+  const latest = latestAiActivityAt(writing, signals, publicHandbook);
   if (!latest) return [];
 
   return [
@@ -56,7 +63,7 @@ export function buildAiSitemapEntries(
       changeFrequency: "daily",
       priority: 0.85,
     },
-    ...getActiveTopics(writing, signals).flatMap((activity) =>
+    ...getActiveTopics(writing, signals, publicHandbook).flatMap((activity) =>
       activity.latestActivityAt
         ? [
             {
@@ -68,7 +75,30 @@ export function buildAiSitemapEntries(
           ]
         : [],
     ),
+    ...buildHandbookSitemapEntries(site, publicHandbook),
   ];
+}
+
+export function buildHandbookSitemapEntries(
+  site: string,
+  entries: readonly HandbookEntry[],
+): MetadataRoute.Sitemap {
+  return entries.filter(isPublishedHandbookEntry).map((entry) => ({
+    url: `${site}/ai/${entry.routeKind}/${entry.slug}`,
+    lastModified: entry.updatedAt,
+    changeFrequency: "monthly" as const,
+    priority: 0.72,
+  }));
+}
+
+function loadHandbookSitemapSafely(): HandbookEntry[] {
+  try {
+    return getPublishedHandbookEntries();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[sitemap] Handbook unavailable: ${message}`);
+    return [];
+  }
 }
 
 /**
@@ -83,14 +113,15 @@ export function buildAiSitemapEntries(
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const site = env.siteUrl.replace(/\/$/, "");
-  const [posts, archiveDays, dailyArchive, curatedResult] = await Promise.all([
+  const [posts, archiveDays, dailyArchive, curatedResult, handbook] = await Promise.all([
     getPublishedWritingPosts(),
     getArchiveIndex(),
     getDailyBriefArchive(100),
     getCuratedAiCorpus(),
+    Promise.resolve().then(loadHandbookSitemapSafely),
   ]);
   const dailyEntries = buildDailySitemapEntries(site, dailyArchive.briefs);
-  const aiEntries = buildAiSitemapEntries(site, posts, curatedResult.signals);
+  const aiEntries = buildAiSitemapEntries(site, posts, curatedResult.signals, handbook);
 
   const gated: MetadataRoute.Sitemap = env.publicResearchEnabled
     ? [
