@@ -228,9 +228,9 @@ describe("rate-limit deployment contract", () => {
   );
 
   it("documents the required generated secret and migrate-before-deploy order", () => {
-    expect(envExample).toContain("PUBLIC_MUTATION_RATE_LIMIT_SECRET");
+    expect(envExample).toContain("MUTATION_RATE_LIMIT_SECRET");
     expect(envExample).toContain("openssl rand -hex 32");
-    expect(readme).toContain("PUBLIC_MUTATION_RATE_LIMIT_SECRET");
+    expect(readme).toContain("MUTATION_RATE_LIMIT_SECRET");
     expect(runbook).toContain("0010_bent_susan_delgado.sql");
     expect(runbook).toContain("before deploying");
   });

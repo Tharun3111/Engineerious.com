@@ -100,7 +100,7 @@ export function hashPublicMutationIdentity(
   identity: string,
 ): string {
   if (!isValidPublicMutationRateLimitSecret(secret)) {
-    throw new Error("Invalid PUBLIC_MUTATION_RATE_LIMIT_SECRET.");
+    throw new Error("Invalid MUTATION_RATE_LIMIT_SECRET.");
   }
 
   return createHmac("sha256", Buffer.from(secret, "hex"))

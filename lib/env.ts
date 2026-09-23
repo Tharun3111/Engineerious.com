@@ -12,7 +12,7 @@ export const env = {
    * Key for HMAC-only public mutation counters. Production subscribe/submit
    * mutations fail closed unless this is 32-128 random bytes encoded as hex.
    */
-  publicMutationRateLimitSecret: process.env.PUBLIC_MUTATION_RATE_LIMIT_SECRET,
+  publicMutationRateLimitSecret: process.env.MUTATION_RATE_LIMIT_SECRET,
 
   githubToken: process.env.GITHUB_TOKEN,
   hfToken: process.env.HF_TOKEN,

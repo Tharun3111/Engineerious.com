@@ -73,7 +73,7 @@ verified.
 | `DATABASE_URL` | Neon pooled connection string |
 | `CRON_SECRET` | Authenticates `/api/cron/*`. Routes **fail closed** without it |
 | `ADMIN_PASSWORD` | HTTP Basic for `/admin`. `/admin` returns 503 without it — never open |
-| `PUBLIC_MUTATION_RATE_LIMIT_SECRET` | Stable 32-128-byte hex HMAC key for public POST limits. Generate with `openssl rand -hex 32`; production mutations fail closed without it |
+| `MUTATION_RATE_LIMIT_SECRET` | Server-only, stable 32-128-byte hex HMAC key for public POST limits. Generate with `openssl rand -hex 32`; production mutations fail closed without it |
 | `NEXT_PUBLIC_SITE_URL` | Canonical origin for metadata, sitemap, RSS |
 
 **Optional** — every one of these degrades gracefully; the adapter or feature reports itself
